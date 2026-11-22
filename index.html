@@ -1,0 +1,2691 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MHA5e — Hero Agency Character & Campaign Tracker</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter for crisp readability, Chakra Petch for Hero HUD headers -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Font Awesome for crisp HUD icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            hud: ['"Chakra Petch"', 'sans-serif'],
+          },
+          colors: {
+            agency: {
+              950: '#070b14',
+              900: '#0b1120',
+              800: '#131c31',
+              700: '#1e293b',
+              600: '#334155',
+            },
+            heroGold: '#fbbf24',
+            heroCrimson: '#ef4444',
+            heroCyan: '#22d3ee',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* Custom HUD scrollbar and subtle halftone/grid background */
+    body {
+      background-color: #070b14;
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(34, 211, 238, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 85% 10%, rgba(239, 68, 68, 0.06) 0%, transparent 40%),
+        linear-gradient(rgba(30, 41, 59, 0.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 41, 59, 0.18) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .hud-panel {
+      background: linear-gradient(160deg, rgba(19, 28, 49, 0.96), rgba(11, 17, 32, 0.98));
+      border: 1px solid rgba(51, 65, 85, 0.8);
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .hud-title {
+      font-family: 'Chakra Petch', sans-serif;
+      letter-spacing: 0.04em;
+    }
+
+    /* Hide number input spin buttons for cleaner HUD fields */
+    input[type='number']::-webkit-inner-spin-button,
+    input[type='number']::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type='number'] {
+      -moz-appearance: textfield;
+    }
+
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1120;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Comic slash accent */
+    .ultimate-glow {
+      box-shadow: 0 0 16px rgba(251, 191, 36, 0.25), inset 0 0 12px rgba(251, 191, 36, 0.08);
+      border-color: rgba(251, 191, 36, 0.75) !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-24 antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- ==================== TOP AGENCY ROSTER BAR ==================== -->
+  <header class="sticky top-0 z-40 bg-agency-950/95 backdrop-blur-md border-b border-slate-800 shadow-lg">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <!-- Brand -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 via-red-500 to-rose-600 flex items-center justify-center shadow-md shadow-red-500/20 border border-amber-300/40">
+          <i class="fa-solid fa-bolt text-slate-950 text-lg"></i>
+        </div>
+        <div>
+          <h1 class="hud-title text-lg sm:text-xl font-bold leading-none tracking-wider text-white">
+            MHA<span class="text-amber-400">5E</span>
+            <span class="hidden sm:inline text-xs font-semibold text-cyan-400 ml-1 uppercase tracking-widest">Hero HUD</span>
+          </h1>
+          <p class="text-[10px] text-slate-400 tracking-wide uppercase">Character & Campaign Tracker</p>
+        </div>
+      </div>
+
+      <!-- Roster Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative">
+          <select id="rosterSelect" aria-label="Switch Character"
+            class="bg-agency-800 border border-slate-600 text-slate-100 text-sm font-semibold rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 max-w-[180px] sm:max-w-[230px] truncate">
+          </select>
+        </div>
+
+        <button onclick="openNewHeroModal()" class="px-3 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs sm:text-sm transition flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-plus"></i><span>New Hero</span>
+        </button>
+
+        <button onclick="openDeleteModal()" title="Delete Current Hero" class="p-2 rounded-lg bg-slate-800 hover:bg-red-900/60 border border-slate-700 hover:border-red-500/60 text-slate-300 hover:text-red-300 transition text-sm">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+
+        <div class="h-5 w-px bg-slate-700 hidden sm:block"></div>
+
+        <button onclick="exportRosterJSON()" title="Export Backup JSON" class="px-2.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 text-xs font-semibold transition flex items-center gap-1.5">
+          <i class="fa-solid fa-download"></i><span class="hidden md:inline">Export</span>
+        </button>
+        <button onclick="openImportModal()" title="Import Backup JSON" class="px-2.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5">
+          <i class="fa-solid fa-upload"></i><span class="hidden md:inline">Import</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN WORKSPACE ==================== -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
+
+    <!-- HERO IDENTITY, LEVELING & REST BAR -->
+    <section class="hud-panel rounded-2xl p-4 sm:p-5 relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-red-500 to-cyan-400"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+        <!-- Identity Inputs -->
+        <div class="lg:col-span-5 space-y-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Character Name</label>
+              <input id="charName" type="text" placeholder="e.g., Izuku Midoriya"
+                class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-cyan-400" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-400/90 mb-1">Hero / Villain Alias</label>
+              <input id="charAlias" type="text" placeholder="e.g., Deku"
+                class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-bold text-amber-300 focus:outline-none focus:border-amber-400" />
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span id="badgePhysiology" class="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-slate-200 font-semibold"></span>
+            <span id="badgeClass" class="px-2.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-semibold"></span>
+            <span id="badgeQuirk" class="px-2.5 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/40 text-rose-300 font-semibold"></span>
+          </div>
+        </div>
+
+        <!-- Level, Proficiency & XP Progress -->
+        <div class="lg:col-span-4 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <div class="bg-agency-900 border border-slate-700 rounded-xl px-2.5 py-1.5 flex items-center gap-2">
+                <span class="text-[10px] font-bold uppercase text-slate-400">LVL</span>
+                <input id="charLevel" type="number" min="1" max="20"
+                  class="w-10 bg-transparent text-center hud-title text-xl font-bold text-amber-400 focus:outline-none" />
+              </div>
+              <div class="bg-agency-900 border border-slate-700 rounded-xl px-3 py-1.5 text-center">
+                <span class="block text-[9px] font-bold uppercase text-slate-400 leading-none">Prof Bonus</span>
+                <span id="profBonusDisplay" class="hud-title text-lg font-bold text-cyan-400 leading-tight">+2</span>
+              </div>
+              <button onclick="openLevelUpModal()" class="px-2.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 text-xs font-bold transition flex items-center gap-1" title="Level-Up Helper">
+                <i class="fa-solid fa-arrow-up-right-dots"></i><span>Level Up</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- XP Bar -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1">
+              <span class="text-slate-400 font-semibold flex items-center gap-1.5">
+                XP:
+                <input id="charXP" type="number" min="0"
+                  class="w-20 bg-agency-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs font-bold text-white focus:outline-none focus:border-cyan-400" />
+              </span>
+              <span id="xpNextLabel" class="text-slate-400 font-medium">Next: 300 XP</span>
+            </div>
+            <div class="w-full h-2 bg-agency-950 rounded-full overflow-hidden border border-slate-800">
+              <div id="xpBarFill" class="h-full bg-gradient-to-r from-cyan-500 to-amber-400 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rest Controls -->
+        <div class="lg:col-span-3 flex flex-wrap lg:justify-end gap-2">
+          <button onclick="performRest('short')" class="flex-1 lg:flex-none px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-cyan-300 text-xs font-bold transition flex items-center justify-center gap-1.5" title="Resets Strain, Drive & Gadget Charges">
+            <i class="fa-solid fa-mug-hot"></i><span>Short Rest</span>
+          </button>
+          <button onclick="performRest('long')" class="flex-1 lg:flex-none px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-amber-300 text-xs font-bold transition flex items-center justify-center gap-1.5" title="Heals Half Max HP (MHA5e), resets Output & Daily Uses">
+            <i class="fa-solid fa-moon"></i><span>Long Rest</span>
+          </button>
+          <button onclick="performRest('full')" class="flex-1 lg:flex-none px-3 py-2 rounded-xl bg-indigo-950/80 hover:bg-indigo-900/80 border border-indigo-400/50 text-indigo-200 text-xs font-bold transition flex items-center justify-center gap-1.5" title="24h Full Rest: Full HP, All Hit Dice, Clears Conditions">
+            <i class="fa-solid fa-heart-pulse"></i><span>Full Rest</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="flex overflow-x-auto gap-2 pb-1 no-scrollbar" role="tablist">
+      <button onclick="switchTab('combat')" data-tab="combat"
+        class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-hud font-bold text-sm uppercase tracking-wider transition flex items-center gap-2 border">
+        <i class="fa-solid fa-shield-halved"></i> Combat &amp; Stats
+      </button>
+      <button onclick="switchTab('quirk')" data-tab="quirk"
+        class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-hud font-bold text-sm uppercase tracking-wider transition flex items-center gap-2 border">
+        <i class="fa-solid fa-fire-flame-curved"></i> Quirk &amp; Moves
+      </button>
+      <button onclick="switchTab('class')" data-tab="class"
+        class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-hud font-bold text-sm uppercase tracking-wider transition flex items-center gap-2 border">
+        <i class="fa-solid fa-dna"></i> Physiology &amp; Class
+      </button>
+      <button onclick="switchTab('background')" data-tab="background"
+        class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-hud font-bold text-sm uppercase tracking-wider transition flex items-center gap-2 border">
+        <i class="fa-solid fa-id-badge"></i> Background, Gear &amp; Feats
+      </button>
+    </nav>
+
+    <!-- ==================== TAB 1: COMBAT & STATS ==================== -->
+    <div id="tab-combat" class="tab-panel space-y-4">
+
+      <!-- 7 ABILITY SCORES ROW -->
+      <section class="hud-panel rounded-2xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 class="hud-title text-base font-bold uppercase text-cyan-400 flex items-center gap-2">
+            <i class="fa-solid fa-chart-simple"></i> Seven Ability Scores &amp; Saving Throws
+          </h2>
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="openStatHelperModal('array')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-semibold text-amber-300 transition">
+              <i class="fa-solid fa-list-ol mr-1"></i>Standard Array
+            </button>
+            <button onclick="openStatHelperModal('roll')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-semibold text-cyan-300 transition">
+              <i class="fa-solid fa-dice mr-1"></i>Roll 4d6 Drop Lowest (×7)
+            </button>
+          </div>
+        </div>
+        <div id="abilityScoresGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- MAIN COMBAT 3-COLUMN GRID -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        <!-- LEFT: SKILLS & PASSIVE PERCEPTION -->
+        <section class="lg:col-span-4 hud-panel rounded-2xl p-4 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="hud-title text-base font-bold uppercase text-amber-400 flex items-center gap-2">
+              <i class="fa-solid fa-bolt"></i> MHA5e Skills
+            </h2>
+            <div class="px-2.5 py-1 rounded-lg bg-agency-900 border border-slate-700 text-xs font-bold">
+              <span class="text-slate-400">Passive Perc:</span>
+              <span id="passivePerceptionDisplay" class="text-cyan-400 ml-1">10</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2">Click circle to cycle: <span class="text-slate-300">None</span> → <span class="text-cyan-400">Prof</span> → <span class="text-amber-400">Expert</span>. Click skill to roll.</p>
+          <div id="skillsList" class="space-y-1 max-h-[540px] overflow-y-auto pr-1">
+            <!-- Populated dynamically -->
+          </div>
+        </section>
+
+        <!-- MIDDLE: HP, VITALS, CLASS RESOURCE & SUPER SUIT -->
+        <div class="lg:col-span-4 space-y-4">
+
+          <!-- HP & CORE VITALS -->
+          <section class="hud-panel rounded-2xl p-4 space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="hud-title text-base font-bold uppercase text-rose-400 flex items-center gap-2">
+                <i class="fa-solid fa-heart"></i> Combat Vitals
+              </h2>
+              <button onclick="autoCalcLv1HP()" class="px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 text-[11px] font-bold transition" title="Calculates Lv1 HP including MHA5e Improved Durability">
+                Auto-Calc Lv1 HP
+              </button>
+            </div>
+
+            <!-- HP Display & Bar -->
+            <div class="bg-agency-900/90 border border-slate-700 rounded-xl p-3 space-y-2.5">
+              <div class="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <label class="block text-[10px] font-bold uppercase text-slate-400">Current HP</label>
+                  <input id="hpCurrent" type="number" class="w-full bg-agency-950 border border-slate-700 rounded-lg py-1 text-center hud-title text-xl font-bold text-emerald-400 focus:outline-none focus:border-emerald-400" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold uppercase text-slate-400">Max HP</label>
+                  <input id="hpMax" type="number" min="1" class="w-full bg-agency-950 border border-slate-700 rounded-lg py-1 text-center hud-title text-xl font-bold text-white focus:outline-none focus:border-cyan-400" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold uppercase text-slate-400">Temp HP</label>
+                  <input id="hpTemp" type="number" min="0" class="w-full bg-agency-950 border border-slate-700 rounded-lg py-1 text-center hud-title text-xl font-bold text-cyan-400 focus:outline-none focus:border-cyan-400" />
+                </div>
+              </div>
+
+              <div class="w-full h-3 bg-agency-950 rounded-full overflow-hidden border border-slate-800">
+                <div id="hpBarFill" class="h-full bg-gradient-to-r from-emerald-500 to-green-400 transition-all duration-300" style="width: 100%"></div>
+              </div>
+
+              <!-- Quick Damage / Heal -->
+              <div class="flex items-center gap-1.5">
+                <input id="hpDeltaInput" type="number" min="1" value="5" aria-label="HP amount"
+                  class="w-16 bg-agency-950 border border-slate-700 rounded-lg py-1.5 text-center text-sm font-bold text-white focus:outline-none focus:border-amber-400" />
+                <button onclick="adjustHP(-1)" class="flex-1 py-1.5 rounded-lg bg-rose-600/80 hover:bg-rose-500 text-white text-xs font-bold transition">
+                  <i class="fa-solid fa-minus mr-1"></i>Damage
+                </button>
+                <button onclick="adjustHP(1)" class="flex-1 py-1.5 rounded-lg bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs font-bold transition">
+                  <i class="fa-solid fa-plus mr-1"></i>Heal
+                </button>
+              </div>
+            </div>
+
+            <!-- AC, Speed, Initiative, Hit Dice -->
+            <div class="grid grid-cols-4 gap-2 text-center">
+              <div class="bg-agency-900 border border-slate-700 rounded-xl p-2">
+                <label class="block text-[10px] font-bold uppercase text-slate-400">AC</label>
+                <input id="statAC" type="number" class="w-full bg-transparent text-center hud-title text-xl font-bold text-amber-400 focus:outline-none" />
+              </div>
+              <div class="bg-agency-900 border border-slate-700 rounded-xl p-2">
+                <label class="block text-[10px] font-bold uppercase text-slate-400">Speed</label>
+                <input id="statSpeed" type="number" class="w-full bg-transparent text-center hud-title text-xl font-bold text-white focus:outline-none" />
+              </div>
+              <button onclick="rollInitiative()" class="bg-agency-900 hover:bg-slate-800 border border-cyan-500/40 rounded-xl p-2 transition group" title="Click to Roll Initiative">
+                <span class="block text-[10px] font-bold uppercase text-cyan-400 group-hover:text-cyan-300">Init <i class="fa-solid fa-dice-d20"></i></span>
+                <span id="statInitDisplay" class="hud-title text-xl font-bold text-white">+0</span>
+              </button>
+              <div class="bg-agency-900 border border-slate-700 rounded-xl p-2">
+                <span id="hitDieLabel" class="block text-[10px] font-bold uppercase text-slate-400">HD (d12)</span>
+                <div class="flex items-center justify-center gap-1 mt-0.5">
+                  <button onclick="adjustHitDice(-1)" class="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">-</button>
+                  <span id="hitDiceDisplay" class="hud-title text-sm font-bold text-white">1/1</span>
+                  <button onclick="adjustHitDice(1)" class="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">+</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Class Resource Quick Bar -->
+            <div id="combatClassResourceBox" class="bg-agency-900 border border-cyan-500/30 rounded-xl p-3 flex items-center justify-between gap-2">
+              <!-- Populated dynamically -->
+            </div>
+          </section>
+
+          <!-- SUPER SUIT PANEL -->
+          <section class="hud-panel rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="hud-title text-base font-bold uppercase text-cyan-400 flex items-center gap-2">
+                <i class="fa-solid fa-user-astronaut"></i> Super Suit
+              </h2>
+              <span id="suitStatusBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider">OPERATIONAL</span>
+            </div>
+
+            <div class="grid grid-cols-12 gap-2">
+              <div class="col-span-8">
+                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Suit Name / Tier</label>
+                <input id="suitName" type="text" placeholder="Starter Hero Suit"
+                  class="w-full bg-agency-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-cyan-400" />
+              </div>
+              <div class="col-span-4">
+                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Suit DR</label>
+                <input id="suitDR" type="number" min="0"
+                  class="w-full bg-agency-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold text-center text-amber-400 focus:outline-none focus:border-amber-400" />
+              </div>
+            </div>
+
+            <!-- Integrity Tracker -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400 font-semibold">Integrity</span>
+                <div class="flex items-center gap-1.5">
+                  <button onclick="adjustSuitIntegrity(-5)" class="px-1.5 py-0.5 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-[11px] font-bold">-5</button>
+                  <input id="suitIntegrity" type="number" min="0" class="w-12 bg-agency-900 border border-slate-700 rounded text-center text-xs font-bold text-white py-0.5" />
+                  <span class="text-slate-500">/</span>
+                  <input id="suitMaxIntegrity" type="number" min="1" class="w-12 bg-agency-900 border border-slate-700 rounded text-center text-xs font-bold text-slate-300 py-0.5" />
+                  <button onclick="adjustSuitIntegrity(10)" class="px-1.5 py-0.5 rounded bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 text-[11px] font-bold">+10</button>
+                </div>
+              </div>
+              <div class="w-full h-2.5 bg-agency-950 rounded-full overflow-hidden border border-slate-800">
+                <div id="suitIntegrityBar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 100%"></div>
+              </div>
+              <p id="suitStatusWarning" class="text-[11px] text-amber-300 hidden"></p>
+            </div>
+
+            <!-- Suit Perks -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-[10px] font-bold uppercase text-slate-400">Suit Perks &amp; Built-In Systems</label>
+                <button onclick="addSuitPerk()" class="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold"><i class="fa-solid fa-plus mr-0.5"></i>Add Perk</button>
+              </div>
+              <div id="suitPerksList" class="space-y-1.5"></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- RIGHT: MHA5e COMBAT MECHANICS & RANKED CONDITIONS -->
+        <div class="lg:col-span-4 space-y-4">
+
+          <!-- PLUS ULTRA, EVASION & CALLOUT SURGE -->
+          <section class="hud-panel rounded-2xl p-4 space-y-3">
+            <h2 class="hud-title text-base font-bold uppercase text-amber-400 flex items-center gap-2">
+              <i class="fa-solid fa-star"></i> MHA5e Combat Mechanics
+            </h2>
+
+            <!-- Plus Ultra Point -->
+            <div class="bg-agency-900 border border-amber-500/40 rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <div class="hud-title text-sm font-bold text-amber-400 uppercase">Plus Ultra Point</div>
+                <p class="text-[11px] text-slate-400">Roll +2 extra d20s &amp; pick highest, or fuel Impact Frame / Cinematic Scene.</p>
+              </div>
+              <button id="plusUltraBtn" onclick="togglePlusUltra()"
+                class="w-12 h-12 rounded-xl font-hud text-lg font-bold border-2 transition flex items-center justify-center shrink-0">
+              </button>
+            </div>
+
+            <!-- Evasion Tracker -->
+            <div class="bg-agency-900 border border-slate-700 rounded-xl p-3">
+              <div class="flex items-center justify-between mb-1">
+                <span class="hud-title text-sm font-bold text-cyan-300 uppercase">Evasion (DEX 15+)</span>
+                <div id="evasionControls" class="flex items-center gap-1.5"></div>
+              </div>
+              <p id="evasionDesc" class="text-[11px] text-slate-400">Reaction: Move 10 ft out of attack range (1 + DEX mod / day).</p>
+            </div>
+
+            <!-- Callout Surge Quick Reference -->
+            <div class="bg-agency-900/70 border border-slate-700/80 rounded-xl p-3">
+              <div class="hud-title text-xs font-bold uppercase text-rose-400 mb-1.5 flex items-center gap-1.5">
+                <i class="fa-solid fa-bullhorn"></i> Callout Surge (Free — Unique Phrase)
+              </div>
+              <div class="grid grid-cols-3 gap-1.5 text-center text-[11px]">
+                <div class="bg-agency-950 border border-slate-800 rounded-lg p-1.5">
+                  <div class="font-bold text-rose-300">Power</div>
+                  <div class="text-slate-400">+5 Damage</div>
+                </div>
+                <div class="bg-agency-950 border border-slate-800 rounded-lg p-1.5">
+                  <div class="font-bold text-cyan-300">Precision</div>
+                  <div class="text-slate-400">+1 Hit / DC</div>
+                </div>
+                <div class="bg-agency-950 border border-slate-800 rounded-lg p-1.5">
+                  <div class="font-bold text-amber-300">Drive</div>
+                  <div class="text-slate-400">+10ft / No OA</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- MHA5e RANKED CONDITIONS -->
+          <section class="hud-panel rounded-2xl p-4 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h2 class="hud-title text-base font-bold uppercase text-rose-400 flex items-center gap-2">
+                <i class="fa-solid fa-biohazard"></i> Ranked Conditions
+              </h2>
+              <button onclick="clearAllConditions()" class="text-[11px] text-slate-400 hover:text-white font-semibold">Reset All</button>
+            </div>
+            <div id="conditionsGrid" class="space-y-2">
+              <!-- Populated dynamically -->
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 2: QUIRK & MOVES ==================== -->
+    <div id="tab-quirk" class="tab-panel hidden space-y-4">
+
+      <!-- QUIRK HEADER & METERS -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        <!-- Core Quirk Profile -->
+        <section class="lg:col-span-7 hud-panel rounded-2xl p-4 sm:p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="hud-title text-lg font-bold uppercase text-rose-400 flex items-center gap-2">
+              <i class="fa-solid fa-fire-flame-curved"></i> Quirk Factor Profile
+            </h2>
+            <div class="flex items-center gap-2 bg-agency-900 border border-amber-400/50 rounded-xl px-3.5 py-1.5">
+              <span class="text-[11px] font-bold uppercase text-slate-400">Quirk Save DC</span>
+              <span id="quirkSaveDCDisplay" class="hud-title text-2xl font-bold text-amber-400">10</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Quirk Name</label>
+              <input id="quirkName" type="text" placeholder="e.g., Hellflame"
+                class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-rose-400" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Type</label>
+                <select id="quirkType" class="w-full bg-agency-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-cyan-400">
+                  <option value="Emitter">Emitter</option>
+                  <option value="Transformation">Transformation</option>
+                  <option value="Mutant">Mutant</option>
+                  <option value="None">None (Quirkless)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Rarity</label>
+                <select id="quirkRarity" class="w-full bg-agency-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-cyan-400">
+                  <option value="Common">Common</option>
+                  <option value="Uncommon">Uncommon</option>
+                  <option value="Rare">Rare</option>
+                  <option value="Very Rare">Very Rare</option>
+                  <option value="Legendary">Legendary</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Governing Ability Score</label>
+              <select id="quirkStat" class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-cyan-300 focus:outline-none focus:border-cyan-400">
+                <option value="str">Strength (STR)</option>
+                <option value="dex">Dexterity (DEX)</option>
+                <option value="con">Constitution (CON)</option>
+                <option value="int">Intelligence (INT)</option>
+                <option value="wis">Wisdom (WIS)</option>
+                <option value="cha">Charisma (CHA)</option>
+                <option value="tech">Technology (TECH)</option>
+              </select>
+            </div>
+            <div id="quirkDCBreakdown" class="text-xs text-slate-400 bg-agency-900/70 border border-slate-800 rounded-lg px-3 py-2">
+              8 + Prof + Mod
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Quirk Weakness &amp; Drawbacks</label>
+            <textarea id="quirkWeakness" rows="3" placeholder="Describe overheating, dehydration, line-of-sight limits, or backlash..."
+              class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-400"></textarea>
+          </div>
+        </section>
+
+        <!-- Quirk Strain & Custom Resource -->
+        <div class="lg:col-span-5 space-y-4">
+
+          <!-- QUIRK STRAIN METER (0-15) -->
+          <section class="hud-panel rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="hud-title text-base font-bold uppercase text-amber-400 flex items-center gap-2">
+                <i class="fa-solid fa-gauge-high"></i> Quirk Strain Meter
+              </h3>
+              <span id="strainStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase">STABLE</span>
+            </div>
+
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5">
+                <button onclick="adjustStrain(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-slate-200">-</button>
+                <span id="strainValueDisplay" class="hud-title text-2xl font-bold text-white w-14 text-center">0 / 15</span>
+                <button onclick="adjustStrain(1)" class="w-8 h-8 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 font-bold text-amber-300">+1</button>
+                <button onclick="adjustStrain(2)" class="px-2 h-8 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-xs font-bold text-rose-300">+2</button>
+              </div>
+              <button onclick="resetStrain()" class="text-xs text-slate-400 hover:text-white font-semibold">Reset</button>
+            </div>
+
+            <div class="w-full h-3 bg-agency-950 rounded-full overflow-hidden border border-slate-800 relative">
+              <div id="strainBarFill" class="h-full bg-cyan-400 transition-all duration-300" style="width: 0%"></div>
+              <!-- Marker at 10/15 (66.6%) -->
+              <div class="absolute top-0 bottom-0 left-[66.6%] w-0.5 bg-amber-400/80" title="Overexerted Threshold (10)"></div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <p class="text-[11px] text-slate-400">Control Check DC: <strong id="strainDCDisplay" class="text-amber-300">8</strong> (10+ Overexerted / 15 Loss)</p>
+              <button onclick="rollQuirkControlCheck()" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 text-xs font-bold transition flex items-center gap-1.5">
+                <i class="fa-solid fa-dice-d20"></i> Control Check
+              </button>
+            </div>
+          </section>
+
+          <!-- CUSTOM QUIRK RESOURCE TRACKER -->
+          <section class="hud-panel rounded-2xl p-4 space-y-3">
+            <h3 class="hud-title text-base font-bold uppercase text-cyan-400 flex items-center gap-2">
+              <i class="fa-solid fa-battery-three-quarters"></i> Custom Quirk Resource
+            </h3>
+            <input id="quirkResLabel" type="text" placeholder="e.g., Heat Points, Hydration Cups, Watts, Hair HP"
+              class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-cyan-400" />
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5">
+                <button onclick="adjustQuirkResource(-5)" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">-5</button>
+                <button onclick="adjustQuirkResource(-1)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white">-1</button>
+                <input id="quirkResCurrent" type="number" class="w-16 bg-agency-900 border border-slate-700 rounded-lg py-1 text-center hud-title text-lg font-bold text-cyan-300" />
+                <span class="text-slate-500 font-bold">/</span>
+                <input id="quirkResMax" type="number" min="0" class="w-16 bg-agency-900 border border-slate-700 rounded-lg py-1 text-center hud-title text-lg font-bold text-slate-300" />
+                <button onclick="adjustQuirkResource(1)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white">+1</button>
+                <button onclick="adjustQuirkResource(5)" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">+5</button>
+              </div>
+            </div>
+            <div class="w-full h-2.5 bg-agency-950 rounded-full overflow-hidden border border-slate-800">
+              <div id="quirkResBar" class="h-full bg-gradient-to-r from-cyan-500 to-blue-400 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- MOVES & ABILITIES MANAGER -->
+      <section class="hud-panel rounded-2xl p-4 sm:p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="hud-title text-lg font-bold uppercase text-amber-400 flex items-center gap-2">
+              <i class="fa-solid fa-burst"></i> Quirk Moves &amp; Super Techniques
+            </h2>
+            <p class="text-xs text-slate-400">Star (<i class="fa-solid fa-star text-amber-400"></i>) any move to designate your <strong class="text-amber-300">ULTIMATE MOVE</strong> (+1 damage die, +10 ft range/area, +2 rounds duration).</p>
+          </div>
+          <button onclick="openMoveModal()" class="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs sm:text-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> Add Move / Ability
+          </button>
+        </div>
+
+        <div id="movesList" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+    </div>
+
+    <!-- ==================== TAB 3: PHYSIOLOGY & CLASS ==================== -->
+    <div id="tab-class" class="tab-panel hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        <!-- PHYSIOLOGY ENGINE -->
+        <section class="lg:col-span-5 hud-panel rounded-2xl p-4 sm:p-5 space-y-4">
+          <h2 class="hud-title text-lg font-bold uppercase text-cyan-400 flex items-center gap-2">
+            <i class="fa-solid fa-dna"></i> Physiology (Body Baseline)
+          </h2>
+
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Select Physiology</label>
+            <select id="physiologySelect" class="w-full bg-agency-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-cyan-400">
+              <option value="standard">Standard Physiology</option>
+              <option value="standard_variant">Standard Physiology (Variant)</option>
+              <option value="quirkless">Quirkless Physiology</option>
+              <option value="quirkless_variant">Quirkless Physiology (Combat Variant)</option>
+              <option value="heteromorph">Heteromorph Physiology</option>
+              <option value="superhuman">Superhuman Physiology</option>
+            </select>
+          </div>
+
+          <div id="physiologyDetails" class="bg-agency-900/90 border border-slate-700 rounded-xl p-3.5 space-y-2 text-xs text-slate-300">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Heteromorph Mutations Selector (shown only if Heteromorph) -->
+          <div id="heteromorphMutationsBox" class="hidden bg-agency-900 border border-amber-500/40 rounded-xl p-3.5 space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="hud-title text-sm font-bold uppercase text-amber-400">Supernatural Physique (Pick 2)</h3>
+              <span id="mutationCountBadge" class="text-[11px] font-bold text-slate-400">0 / 2</span>
+            </div>
+            <div id="mutationsChecklist" class="space-y-1.5 text-xs">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </section>
+
+        <!-- CLASS ENGINE -->
+        <section class="lg:col-span-7 hud-panel rounded-2xl p-4 sm:p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="hud-title text-lg font-bold uppercase text-amber-400 flex items-center gap-2">
+              <i class="fa-solid fa-fist-raised"></i> Hero Class Engine
+            </h2>
+            <span id="classHitDieBadge" class="px-3 py-1 rounded-full bg-slate-800 border border-slate-600 text-xs font-bold text-cyan-300">Hit Die: 1d12</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Class</label>
+              <select id="classSelect" class="w-full bg-agency-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-amber-400">
+                <option value="striker">Striker (1d12)</option>
+                <option value="catalyst">Catalyst (1d8)</option>
+                <option value="arsenal">Arsenal (1d10)</option>
+              </select>
+            </div>
+            <div>
+              <label id="classKeyStatLabel" class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Fighting Spirit Stat</label>
+              <select id="classKeyStatSelect" class="w-full bg-agency-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-cyan-300 focus:outline-none focus:border-cyan-400">
+                <option value="str">Strength (STR)</option>
+                <option value="dex">Dexterity (DEX)</option>
+                <option value="con">Constitution (CON)</option>
+                <option value="int">Intelligence (INT)</option>
+                <option value="wis">Wisdom (WIS)</option>
+                <option value="cha">Charisma (CHA)</option>
+                <option value="tech">Technology (TECH)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Specialization (Lv 2+)</label>
+              <select id="classSpecSelect" class="w-full bg-agency-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-amber-300 focus:outline-none focus:border-amber-400">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Level-Scaled Class Stats Grid -->
+          <div id="classScaledMetrics" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Interactive Resource Spend/Regain -->
+          <div id="classResourcePanel" class="bg-agency-900 border border-cyan-500/40 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Class Summary & Milestones -->
+          <div id="classFeatureSummary" class="bg-agency-900/70 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-300 space-y-1.5">
+            <!-- Populated dynamically -->
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 4: BACKGROUND, GEAR & FEATS ==================== -->
+    <div id="tab-background" class="tab-panel hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        <!-- BACKGROUND & PROGRESSION -->
+        <section class="lg:col-span-5 hud-panel rounded-2xl p-4 sm:p-5 space-y-4">
+          <h2 class="hud-title text-lg font-bold uppercase text-amber-400 flex items-center gap-2">
+            <i class="fa-solid fa-id-badge"></i> Background &amp; Hero Economy
+          </h2>
+
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Background</label>
+            <select id="bgSelect" class="w-full bg-agency-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-amber-400">
+              <option value="Hero Course Student">Hero Course Student</option>
+              <option value="Hero's Legacy">Hero's Legacy</option>
+              <option value="The Symbol">The Symbol</option>
+              <option value="Licensed Pro Hero">Licensed Pro Hero</option>
+              <option value="Vigilante">Vigilante</option>
+              <option value="Ordinary Civilian">Ordinary Civilian</option>
+              <option value="Government Experiment">Government Experiment</option>
+              <option value="Underground Informant">Underground Informant</option>
+              <option value="Villain">Villain</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Starting Contact</label>
+              <input id="bgContact" type="text" placeholder="e.g., Homeroom Teacher"
+                class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-semibold text-white" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Progression Track</label>
+              <div class="flex items-center gap-1.5">
+                <input id="bgProgName" type="text" placeholder="Credits"
+                  class="w-full bg-agency-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs font-semibold text-cyan-300" />
+                <input id="bgProgPoints" type="number" min="0"
+                  class="w-14 bg-agency-900 border border-slate-700 rounded-lg px-2 py-1.5 text-center text-xs font-bold text-amber-400" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Background Drawback</label>
+            <input id="bgDrawback" type="text" placeholder="e.g., School Rules (Inspiration when broken to save someone)"
+              class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
+          </div>
+
+          <!-- Yen & FTP -->
+          <div class="grid grid-cols-2 gap-3 pt-1">
+            <div class="bg-agency-900 border border-slate-700 rounded-xl p-3">
+              <label class="block text-[10px] font-bold uppercase text-emerald-400 mb-1"><i class="fa-solid fa-yen-sign mr-1"></i>Currency (Yen)</label>
+              <input id="bgYen" type="number" min="0"
+                class="w-full bg-agency-950 border border-slate-700 rounded-lg px-2.5 py-1.5 hud-title text-lg font-bold text-emerald-300" />
+            </div>
+            <div class="bg-agency-900 border border-slate-700 rounded-xl p-3">
+              <label class="block text-[10px] font-bold uppercase text-cyan-400 mb-1"><i class="fa-solid fa-clock mr-1"></i>Free Time Points (FTP)</label>
+              <div class="flex items-center gap-1.5">
+                <button onclick="adjustFTP(-1)" class="w-8 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold">-</button>
+                <input id="bgFTP" type="number" min="0"
+                  class="w-full bg-agency-950 border border-slate-700 rounded-lg py-1.5 text-center hud-title text-lg font-bold text-cyan-300" />
+                <button onclick="adjustFTP(1)" class="w-8 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold">+</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SUPPORT GEAR, WEAPONS, FEATS & BACKSTORY -->
+        <div class="lg:col-span-7 space-y-4">
+
+          <!-- SUPPORT GEAR & WEAPONS -->
+          <section class="hud-panel rounded-2xl p-4 sm:p-5 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="hud-title text-lg font-bold uppercase text-cyan-400 flex items-center gap-2">
+                  <i class="fa-solid fa-toolbox"></i> Support Gear &amp; Weapons
+                </h2>
+                <div class="flex items-center gap-2 mt-1">
+                  <label class="inline-flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                    <input id="isProToggle" type="checkbox" class="rounded bg-agency-900 border-slate-600 text-amber-400 focus:ring-0" />
+                    <span>Licensed Pro Hero (4-item limit vs Student 3-item limit)</span>
+                  </label>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="gearLimitBadge" class="px-2.5 py-1 rounded-lg bg-agency-900 border border-slate-700 text-xs font-bold text-cyan-300">Active: 0 / 3</span>
+                <button onclick="addGearItem()" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 text-xs font-bold transition">
+                  <i class="fa-solid fa-plus mr-1"></i>Add Gear
+                </button>
+              </div>
+            </div>
+
+            <div id="gearList" class="space-y-2">
+              <!-- Populated dynamically -->
+            </div>
+          </section>
+
+          <!-- FEATS & BACKSTORY -->
+          <section class="hud-panel rounded-2xl p-4 sm:p-5 space-y-3">
+            <h2 class="hud-title text-lg font-bold uppercase text-amber-400 flex items-center gap-2">
+              <i class="fa-solid fa-book-open"></i> Feats &amp; Backstory Notes
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Feats &amp; Special Training</label>
+                <textarea id="bgFeats" rows="5" placeholder="List feats (e.g., Quirk Mastery, Go Beyond, Combat Footwork)..."
+                  class="w-full bg-agency-900 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-400"></textarea>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Character Story, Ideals &amp; Notes</label>
+                <textarea id="bgBackstory" rows="5" placeholder="Why did you become a hero or villain? Key bonds, rivals, and goals..."
+                  class="w-full bg-agency-900 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-cyan-400"></textarea>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== FLOATING QUICK DICE ROLLER & LOG ==================== -->
+  <div id="diceDrawer" class="fixed bottom-3 right-3 z-50 w-[calc(100%-1.5rem)] sm:w-96">
+    <!-- Collapsed / Header Toggle -->
+    <div class="hud-panel rounded-2xl overflow-hidden border-cyan-500/40 shadow-2xl">
+      <button onclick="toggleDiceTray()" class="w-full px-4 py-2.5 bg-agency-900/95 hover:bg-agency-800 flex items-center justify-between text-left transition">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-dice-d20 text-amber-400 text-lg"></i>
+          <span class="hud-title font-bold text-sm uppercase text-white">Dice Tray &amp; Roll Log</span>
+          <span id="lastRollBadge" class="hidden px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-xs font-bold"></span>
+        </div>
+        <i id="diceToggleIcon" class="fa-solid fa-chevron-up text-slate-400 text-xs"></i>
+      </button>
+
+      <div id="diceTrayBody" class="hidden p-3 space-y-3 border-t border-slate-800">
+        <!-- Dice Buttons -->
+        <div class="grid grid-cols-7 gap-1.5">
+          <button onclick="rollCustomDie(4)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-400 text-xs font-hud font-bold text-slate-200 transition">d4</button>
+          <button onclick="rollCustomDie(6)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-400 text-xs font-hud font-bold text-slate-200 transition">d6</button>
+          <button onclick="rollCustomDie(8)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-400 text-xs font-hud font-bold text-slate-200 transition">d8</button>
+          <button onclick="rollCustomDie(10)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-400 text-xs font-hud font-bold text-slate-200 transition">d10</button>
+          <button onclick="rollCustomDie(12)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-400 text-xs font-hud font-bold text-slate-200 transition">d12</button>
+          <button onclick="rollCustomDie(20)" class="py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/60 text-xs font-hud font-bold text-amber-300 transition">d20</button>
+          <button onclick="rollCustomDie(100)" class="py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/60 text-xs font-hud font-bold text-rose-300 transition" title="Clash & Quirk Roll">d100</button>
+        </div>
+
+        <!-- Roll Log Feed -->
+        <div class="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400">
+          <span>Recent Rolls</span>
+          <button onclick="clearRollLog()" class="hover:text-white">Clear</button>
+        </div>
+        <div id="rollLogFeed" class="space-y-1.5 max-h-48 overflow-y-auto pr-1 text-xs">
+          <p class="text-slate-500 italic text-center py-4">Click any skill, save, initiative, or die above to roll.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODALS (NO ALERT/CONFIRM) ==================== -->
+
+  <!-- Modal Backdrop -->
+  <div id="modalBackdrop" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-3">
+    <div id="modalContent" class="hud-panel rounded-2xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto border-cyan-500/40">
+      <!-- Dynamic Modal Inner HTML -->
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastContainer" class="fixed top-16 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- ==================== APPLICATION LOGIC ==================== -->
+  <script>
+    // =========================================================================
+    // 1. MHA5e STATIC RULES & REFERENCE TABLES
+    // =========================================================================
+    const STORAGE_KEY = 'mha5e_roster_v1';
+
+    const XP_THRESHOLDS = [
+      0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000,
+      85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000
+    ];
+
+    const ABILITIES = [
+      { key: 'str', label: 'STR', name: 'Strength' },
+      { key: 'dex', label: 'DEX', name: 'Dexterity' },
+      { key: 'con', label: 'CON', name: 'Constitution' },
+      { key: 'int', label: 'INT', name: 'Intelligence' },
+      { key: 'wis', label: 'WIS', name: 'Wisdom' },
+      { key: 'cha', label: 'CHA', name: 'Charisma' },
+      { key: 'tech', label: 'TECH', name: 'Technology' }
+    ];
+
+    // Full MHA5e Skills list (Nature under Wisdom, Quirk under Int, 4 Tech skills)
+    const SKILLS = [
+      { id: 'athletics', name: 'Athletics', stat: 'str' },
+      { id: 'acrobatics', name: 'Acrobatics', stat: 'dex' },
+      { id: 'sleight', name: 'Sleight of Hand', stat: 'dex' },
+      { id: 'stealth', name: 'Stealth', stat: 'dex' },
+      { id: 'history', name: 'History', stat: 'int' },
+      { id: 'investigation', name: 'Investigation', stat: 'int' },
+      { id: 'quirk', name: 'Quirk (MHA5e)', stat: 'int', badge: true },
+      { id: 'animal', name: 'Animal Handling', stat: 'wis' },
+      { id: 'insight', name: 'Insight', stat: 'wis' },
+      { id: 'medicine', name: 'Medicine (First Aid)', stat: 'wis' },
+      { id: 'nature', name: 'Nature', stat: 'wis' },
+      { id: 'perception', name: 'Perception', stat: 'wis' },
+      { id: 'survival', name: 'Survival', stat: 'wis' },
+      { id: 'deception', name: 'Deception', stat: 'cha' },
+      { id: 'intimidation', name: 'Intimidation', stat: 'cha' },
+      { id: 'performance', name: 'Performance', stat: 'cha' },
+      { id: 'persuasion', name: 'Persuasion', stat: 'cha' },
+      { id: 'engineering', name: 'Engineering (TECH)', stat: 'tech', badge: true },
+      { id: 'sewing', name: 'Sewing (TECH)', stat: 'tech', badge: true },
+      { id: 'crafting', name: 'Crafting (TECH)', stat: 'tech', badge: true },
+      { id: 'hacking', name: 'Hacking (TECH)', stat: 'tech', badge: true }
+    ];
+
+    const CONDITIONS = [
+      { id: 'bleeding', name: 'Bleeding', max: 8, color: 'text-rose-400', tip: '1d4 necrotic/rank at start of turn. DC 13 Medicine action to stop.' },
+      { id: 'concussed', name: 'Concussed', max: 5, color: 'text-purple-400', tip: '-2 to Save DCs & INT rolls per rank; half speed 2 rds; no Rest. DC 15 Medicine.' },
+      { id: 'freeze', name: 'Freeze', max: 5, color: 'text-cyan-300', tip: '1d6 cold/rank when moving; -5 ft speed/rank; -1 DEX checks/saves per rank.' },
+      { id: 'burned', name: 'Burned', max: 5, color: 'text-orange-400', tip: '1d6 fire/rank at start of turn; -1 DEX checks/saves per rank. DC 15 Survival to extinguish.' },
+      { id: 'shocked', name: 'Shocked', max: 8, color: 'text-yellow-300', tip: '1d6 lightning/rank when taking reaction; Flat check DC 8+(ranks-1) for Quirk reactions.' },
+      { id: 'queasy', name: 'Queasy', max: 8, color: 'text-lime-400', tip: 'Disadv on Quirk/physical rolls; DC 10+ranks CON check to use Quirk or 2d4 true dmg/rank & prone.' },
+      { id: 'exhaustion', name: 'Exhaustion', max: 6, color: 'text-slate-300', tip: 'Standard 5e exhaustion tiers (1: Disadv checks, 2: Half speed, 3: Disadv atk/saves, 4: Half HP, 5: 0 speed, 6: Death).' }
+    ];
+
+    const PHYSIOLOGIES = {
+      standard: {
+        name: 'Standard Physiology',
+        bonuses: '+2 to one stat, +1 to three different stats',
+        traits: [
+          'Speed: 30 ft | Size: Medium',
+          'Natural Resilience: Damage Reduction (DR) equal to Proficiency Bonus (except true damage).',
+          'Adaptive Conditioning: On Short Rest, gain Temp HP (½ Prof + CON mod) OR +10 ft speed for 1 turn.',
+          'Growth Potential: On each ASI, +1 to one extra stat (max 14).'
+        ]
+      },
+      standard_variant: {
+        name: 'Standard Physiology (Variant)',
+        bonuses: '+3 to one stat, +1 to another stat',
+        traits: [
+          'Speed: 30 ft | Size: Medium',
+          'Specialization: Choose 3 Skill Proficiencies, OR 1 Skill Expertise, OR 1 Feat.',
+          'Refined Adaptive Conditioning: On Short Rest, gain Temp HP (CON mod) AND +5 ft speed for 1 turn.',
+          'Growth Potential: First ASI grants +2 extra stat points (max 16).'
+        ]
+      },
+      quirkless: {
+        name: 'Quirkless Physiology',
+        bonuses: '+2 INT, +2 TECH, +2 WIS or CHA',
+        traits: [
+          'No Quirk — unmatched intellect and support mastery.',
+          'Heightened Intellect: Expertise in ALL Intelligence & Technology skills + Tinker\'s Tools.',
+          'Technical Aptitude: Use Quirk-gated support items without penalty; Suits/Gear craft in ½ time & cost.',
+          'Indomitable Spirit: Adv vs frightened/charmed; 2/Long Rest turn failed save into success.'
+        ]
+      },
+      quirkless_variant: {
+        name: 'Quirkless (Combat Variant)',
+        bonuses: '+2 STR or DEX, +2 CON',
+        traits: [
+          'No Quirk — peak combat conditioning & tactical grit.',
+          'Heightened Combat Intellect: Expertise in ALL Strength & Dexterity skills; Martial Weapons prof; +2 to tactical INT/STR checks.',
+          'Technical Aptitude: +Proficiency Bonus damage on weapons/support items (1/turn); free draw/stow.'
+        ]
+      },
+      heteromorph: {
+        name: 'Heteromorph Physiology',
+        bonuses: '+2 STR or DEX, +2 CON',
+        traits: [
+          'Size: Small, Medium, or Large | Speed: 30 ft (+5 ft if locomotion mutation).',
+          'Expertise in Survival; Resistance to Extreme Heat OR Extreme Cold.',
+          '1/Long Rest: Treat roll of 9 or lower (except Nat 1) on STR/DEX/CON save as 11.',
+          'Supernatural Physique: Choose TWO permanent mutations below.'
+        ]
+      },
+      superhuman: {
+        name: 'Superhuman Physiology',
+        bonuses: '+2 WIS, +2 CON, +2 to any other stat',
+        traits: [
+          'Speed: 35 ft + 10 ft Hover OR Jump speed.',
+          'Aura Release (Free Action while still): Push creatures within 5 ft back 10 ft; 5 ft heavy wind.',
+          'Supernatural Physique: Pick 2 perks (Resilient Vitality +1 HP/lvl, Agile Reflexes, Unstoppable Strength, Unmatched Agility, Quick Reflexes, Powerful Build, Super Speed +5 ft, or Natural Tactician).'
+        ]
+      }
+    };
+
+    const HETEROMORPH_MUTATIONS = [
+      { id: 'Claws', desc: '1d6 slashing unarmed strikes; Athletics proficiency to climb.' },
+      { id: 'Fangs', desc: '1d4 piercing melee bite attack.' },
+      { id: 'Horns', desc: 'Bonus action gore (1/Short Rest), 1d6 bludgeoning (STR or DEX).' },
+      { id: 'Hooves', desc: '+5 ft speed; 1d8 bludgeoning; 15 ft charge forces STR save or prone.' },
+      { id: 'Tail', desc: 'Adv on balance; interact/grapple; 10 ft reach 1d4 attack.' },
+      { id: 'Wings', desc: '15 ft fly speed (1 min max, then 10 min rest).' },
+      { id: 'Tough Skin', desc: '+1 AC when not wearing armor or a suit.' }
+    ];
+
+    const CLASSES = {
+      striker: {
+        name: 'Striker',
+        hitDie: 12,
+        keyStatLabel: 'Fighting Spirit Stat',
+        resourceName: 'Drive Points',
+        resourceRest: 'Short / Long Rest',
+        specs: ['Bulwark Style', 'Tempest Style', 'Breaker Style', 'Analyst Style', 'Symbol Style'],
+        durabilityBase: 3,
+        durabilityLevels: [1, 3, 6, 9, 12, 16, 20],
+        getMetrics: (lvl) => {
+          const martial = lvl >= 17 ? '2d8' : lvl >= 11 ? '1d12' : lvl >= 5 ? '1d10' : '1d8';
+          const drive = lvl === 1 ? 0 : lvl;
+          const swift = lvl >= 18 ? '+30 ft' : lvl >= 14 ? '+25 ft' : lvl >= 10 ? '+20 ft' : lvl >= 6 ? '+15 ft' : lvl >= 2 ? '+10 ft' : '+0 ft';
+          const dcBonus = lvl >= 20 ? 3 : lvl >= 11 ? 2 : 1;
+          return {
+            resourceMax: drive,
+            dcBonus,
+            cards: [
+              { label: 'Martial Die', val: martial, color: 'text-rose-400' },
+              { label: 'Max Drive', val: drive, color: 'text-cyan-400' },
+              { label: 'Swift Feet', val: swift, color: 'text-amber-400' },
+              { label: 'Driving Will DC', val: `+${dcBonus}`, color: 'text-emerald-400' }
+            ],
+            summary: [
+              '<strong>Iron Fists:</strong> Unarmed strikes deal Martial Die + Spirit Mod; free bonus-action unarmed strike after Attack.',
+              '<strong>Unarmored Defense:</strong> AC = 10 + DEX mod + CON mod (Super Suits allowed).',
+              '<strong>Drive (Lv 2+):</strong> Spend Drive on Flurry of Blows, Burst Step, Iron Guard, or Staggering Blow.'
+            ]
+          };
+        }
+      },
+      catalyst: {
+        name: 'Catalyst',
+        hitDie: 8,
+        keyStatLabel: 'Power Source Stat',
+        resourceName: 'Output Points',
+        resourceRest: 'Long Rest (½ on Short at Lv13)',
+        specs: ['Overdrive Style', 'Artillery Style', 'Control Style', 'Barrier Style', 'Resonance Style'],
+        durabilityBase: 1,
+        durabilityLevels: [1, 4, 8, 12, 16, 20],
+        getMetrics: (lvl) => {
+          const amp = lvl >= 17 ? '2d6' : lvl >= 11 ? '1d10' : lvl >= 5 ? '1d8' : '1d6';
+          const output = lvl === 1 ? 0 : lvl;
+          const techKnown = lvl >= 18 ? 6 : lvl >= 15 ? 5 : lvl >= 10 ? 4 : lvl >= 5 ? 3 : lvl >= 2 ? 2 : 0;
+          const dcBonus = lvl >= 11 ? 2 : 1;
+          return {
+            resourceMax: output,
+            dcBonus,
+            cards: [
+              { label: 'Amplify Die', val: amp, color: 'text-rose-400' },
+              { label: 'Max Output', val: output, color: 'text-cyan-400' },
+              { label: 'Techniques', val: techKnown, color: 'text-amber-400' },
+              { label: 'Focused Power DC', val: `+${dcBonus}`, color: 'text-emerald-400' }
+            ],
+            summary: [
+              '<strong>Quirk Mastery:</strong> 1/turn add your Amplify Die to Quirk damage (applies to every target in AoE).',
+              '<strong>Power Source:</strong> Can use Power Source stat for Quirk attacks & Save DC; gain Focused Power DC bonus.',
+              '<strong>Output (Lv 2+):</strong> Fuel Quirk Techniques (Empower, Extend, Widen, Split, Quick Release, Shield Allies).'
+            ]
+          };
+        }
+      },
+      arsenal: {
+        name: 'Arsenal',
+        hitDie: 10,
+        keyStatLabel: 'Loadout Focus Stat',
+        resourceName: 'Gadget Charges',
+        resourceRest: 'Short / Long Rest',
+        specs: ['Blueprint Style', 'Gunslinger Style', 'Ironclad Style', 'Titan Frame Style', 'Blademaster Style'],
+        durabilityBase: 2,
+        durabilityLevels: [1, 3, 6, 9, 12, 16, 20],
+        getMetrics: (lvl) => {
+          const charges = lvl === 1 ? 0 : Math.min(12, Math.floor(lvl / 2) + 2);
+          const dr = lvl >= 17 ? 6 : lvl >= 13 ? 5 : lvl >= 9 ? 4 : lvl >= 5 ? 3 : 2;
+          const gadgetsKnown = lvl === 1 ? 0 : lvl >= 20 ? 9 : lvl >= 17 ? 8 : lvl >= 14 ? 7 : lvl >= 11 ? 6 : lvl >= 8 ? 5 : lvl >= 5 ? 4 : 3;
+          const dcBonus = lvl >= 11 ? 2 : 1;
+          return {
+            resourceMax: charges,
+            dcBonus,
+            cards: [
+              { label: 'Suit DR', val: dr, color: 'text-amber-400' },
+              { label: 'Gadget Charges', val: charges, color: 'text-cyan-400' },
+              { label: 'Gadgets Known', val: gadgetsKnown, color: 'text-rose-400' },
+              { label: 'Calibrated DC', val: `+${dcBonus}`, color: 'text-emerald-400' }
+            ],
+            summary: [
+              '<strong>Combat Suit:</strong> AC = 13 + DEX mod (max 2) or suit AC; reduce incoming non-psychic damage by Suit DR.',
+              '<strong>Loadout Focus:</strong> Use Focus stat for weapon attacks & Gear Save DC; +1 to all Save DCs (+2 at Lv 11).',
+              '<strong>Gadgets (Lv 2+):</strong> Bonus action tools (Med Patch, Deployable Shield, Flashbang, Grapple Line, Shock Mine).'
+            ]
+          };
+        }
+      }
+    };
+
+    const BACKGROUND_DEFAULTS = {
+      'Hero Course Student': { prog: 'Credits', drawback: 'School Rules: Breaking rules costs Credits; gain Inspiration if done to save someone.', yen: 300, isPro: false },
+      "Hero's Legacy": { prog: 'Renown', drawback: 'Shadow of the Name: Rival/critic recognizes you 1/session (gain Inspiration).', yen: 500, isPro: false },
+      'The Symbol': { prog: 'Hype', drawback: 'Weight of Expectation: Public challenge 1/session; backing down loses 1 Hype (gain Plus Ultra).', yen: 400, isPro: false },
+      'Licensed Pro Hero': { prog: 'Popularity', drawback: 'Public Scrutiny: Collateral damage/scandals cost Popularity (gain Inspiration).', yen: 700, isPro: true },
+      'Vigilante': { prog: 'Legend', drawback: 'Outlaw Hero: Heroes want to arrest you, villains want you dead (gain Inspiration).', yen: 400, isPro: false },
+      'Ordinary Civilian': { prog: 'Goodwill', drawback: 'No License: Public Quirk use is illegal (gain Inspiration when stepping up to save someone).', yen: 800, isPro: false },
+      'Government Experiment': { prog: 'Fragments', drawback: 'Loose End: The program still hunts you (gain Inspiration when they appear).', yen: 500, isPro: false },
+      'Underground Informant': { prog: 'Favors', drawback: 'Burned: Selling out a contact loses all Favors and makes them an enemy.', yen: 200, isPro: false },
+      'Villain': { prog: 'Infamy', drawback: 'Most Wanted: Heroes hunt you and your bounty grows (gain Inspiration).', yen: 200, isPro: false }
+    };
+
+    // =========================================================================
+    // 2. PRESET CHARACTER TEMPLATES (BLANK + HELLFLAME, ARBOR, HEAL, ERASURE)
+    // =========================================================================
+    function createCharacterFromPreset(presetKey, customName = '', customAlias = '') {
+      const base = {
+        id: 'hero_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        name: customName || 'New Hero',
+        alias: customAlias || 'Hero Name',
+        level: 1,
+        xp: 0,
+        physiology: 'standard',
+        mutations: [],
+        classId: 'striker',
+        specialization: 'Bulwark Style',
+        classKeyStat: 'str',
+        classResourceCurrent: 0,
+        stats: { str: 14, dex: 14, con: 14, int: 12, wis: 10, cha: 10, tech: 8 },
+        saveProficiencies: { str: true, dex: false, con: true, int: false, wis: false, cha: false, tech: false },
+        skills: {},
+        hp: { current: 18, max: 18, temp: 0 },
+        ac: 14,
+        speed: 30,
+        hitDiceUsed: 0,
+        suit: {
+          name: 'Starter Hero Suit',
+          tier: 'Starter',
+          dr: 2,
+          integrity: 100,
+          maxIntegrity: 100,
+          perks: ['Utility Pouch (+5 Carry)', 'Emergency Injector (1d10 HP)', 'Comms Earpiece (2 mi)']
+        },
+        combat: {
+          plusUltra: false,
+          evasionUsed: 0,
+          conditions: { bleeding: 0, concussed: 0, freeze: 0, burned: 0, shocked: 0, queasy: 0, exhaustion: 0 }
+        },
+        quirk: {
+          name: '',
+          type: 'Emitter',
+          rarity: 'Uncommon',
+          stat: 'dex',
+          strain: 0,
+          resourceLabel: 'Quirk Charges',
+          resourceCurrent: 0,
+          resourceMax: 10,
+          weakness: '',
+          moves: []
+        },
+        background: {
+          name: 'Hero Course Student',
+          contact: 'Homeroom Teacher',
+          progressName: 'Credits',
+          progressPoints: 0,
+          drawback: BACKGROUND_DEFAULTS['Hero Course Student'].drawback,
+          yen: 300,
+          ftp: 0,
+          isPro: false,
+          gear: [
+            { id: 'g1', name: 'Hero Analysis Notebook', active: false, notes: 'Notes on Quirks & weaknesses' }
+          ],
+          feats: '',
+          backstory: ''
+        }
+      };
+
+      if (presetKey === 'hellflame') {
+        base.name = customName || 'Enji Trainee';
+        base.alias = customAlias || 'Blazeflare';
+        base.classId = 'catalyst';
+        base.specialization = 'Overdrive Style';
+        base.classKeyStat = 'dex';
+        base.stats = { str: 14, dex: 17, con: 14, int: 12, wis: 10, cha: 13, tech: 8 };
+        base.saveProficiencies = { str: false, dex: true, con: true, int: false, wis: false, cha: false, tech: false };
+        base.skills = { athletics: 1, intimidation: 1, quirk: 1, perception: 1 };
+        base.hp = { current: 12, max: 12, temp: 0 };
+        base.ac = 14;
+        base.quirk = {
+          name: 'Hellflame',
+          type: 'Emitter',
+          rarity: 'Rare',
+          stat: 'dex',
+          strain: 0,
+          resourceLabel: 'Heat Points (Overheat at 45)',
+          resourceCurrent: 0,
+          resourceMax: 45,
+          weakness: 'Each move adds Heat Points. At 45 Heat Points, cannot use moves unless taking 2d6 true damage. Cold/cooling restores 3 Heat; rain/snow restores 1/turn.',
+          moves: [
+            { id: 'm1', name: 'Flame', actionType: 'Action', costRange: '1 Heat | 45 ft / 5 ft', effect: 'Ranged or melee attack: 3d6 + DEX fire dmg. Ignores fire resistance; immunity counts as resistance.', isUltimate: false },
+            { id: 'm2', name: 'Flashfire Fist', actionType: 'Action', costRange: '5 Heat | Melee', effect: 'Unarmed hit: 4d10 fire dmg. STR save or pushed 30 ft, prone, 2 ranks Burned (success: 15 ft, 1 Burned).', isUltimate: true },
+            { id: 'm3', name: 'Jet Burn', actionType: 'Bonus Action', costRange: '5 Heat | 30 ft Dash', effect: 'Used with Flame: dash 30 ft (+1d6 dmg per 10 ft, drag prone) OR fire empowered 6d6 fire blast.', isUltimate: false },
+            { id: 'm4', name: 'Fire Fly & Heatup', actionType: 'Passive / Boost', costRange: '2-8 Heat (Heatup)', effect: '60 ft fly/hover speed. Heatup: spend 2-8 Heat on an attack to add +1 damage die per point spent.', isUltimate: false }
+          ]
+        };
+      } else if (presetKey === 'arbor') {
+        base.name = customName || 'Shinji Trainee';
+        base.alias = customAlias || 'Timberguard';
+        base.classId = 'catalyst';
+        base.specialization = 'Control Style';
+        base.classKeyStat = 'dex';
+        base.stats = { str: 12, dex: 17, con: 14, int: 14, wis: 13, cha: 10, tech: 8 };
+        base.saveProficiencies = { str: false, dex: true, con: false, int: true, wis: false, cha: false, tech: false };
+        base.skills = { athletics: 1, acrobatics: 1, quirk: 1, perception: 1, nature: 1 };
+        base.hp = { current: 12, max: 12, temp: 0 };
+        base.ac = 14;
+        base.quirk = {
+          name: 'Arbor',
+          type: 'Transformation',
+          rarity: 'Uncommon',
+          stat: 'dex',
+          strain: 0,
+          resourceLabel: 'Barkguard Uses (Lv3+)',
+          resourceCurrent: 2,
+          resourceMax: 2,
+          weakness: 'Highly flammable: Fire and explosive attacks deal DOUBLE damage to you and your wooden constructs, and open flame instantly burns/collapses creations.',
+          moves: [
+            { id: 'm1', name: 'Root Grasp', actionType: 'Action', costRange: '30 ft | Bonus to hold', effect: 'STR save vs Quirk DC: Fail = 3d10 bludgeoning + Restrained until end of next turn (half on save). Use Bonus Action each turn to maintain restraint.', isUltimate: true },
+            { id: 'm2', name: 'Barkguard (Lv 3)', actionType: 'Reaction', costRange: 'Prof/rest | 10 ft', effect: 'When you or an ally within 10 ft is hit: +2 AC and resistance to bludgeoning, piercing, and slashing for that attack.', isUltimate: false },
+            { id: 'm3', name: 'Verdant Ascent (Lv 5)', actionType: 'Bonus Action', costRange: '30 ft', effect: 'Pull yourself up to your speed toward structure/vegetation, ignoring vertical surfaces and opportunity attacks.', isUltimate: false }
+          ]
+        };
+      } else if (presetKey === 'heal') {
+        base.name = customName || 'Chiyo Trainee';
+        base.alias = customAlias || 'Lifekiss';
+        base.classId = 'catalyst';
+        base.specialization = 'Resonance Style';
+        base.classKeyStat = 'wis';
+        base.stats = { str: 10, dex: 13, con: 16, int: 13, wis: 17, cha: 12, tech: 8 };
+        base.saveProficiencies = { str: false, dex: false, con: true, int: false, wis: true, cha: false, tech: false };
+        base.skills = { medicine: 2, insight: 1, perception: 1, persuasion: 1, quirk: 1 };
+        base.hp = { current: 13, max: 13, temp: 0 };
+        base.ac = 12;
+        base.quirk = {
+          name: 'Heal',
+          type: 'Emitter',
+          rarity: 'Rare',
+          stat: 'wis',
+          strain: 0,
+          resourceLabel: 'Regenerative Kiss (Prof/Long)',
+          resourceCurrent: 2,
+          resourceMax: 2,
+          weakness: 'Cellular Fatigue: Healing the same creature 5 times within 1 minute inflicts 1 Exhaustion (+1 per 2 extra uses, max 5). Fades on Short Rest.',
+          moves: [
+            { id: 'm1', name: 'Healing Kiss', actionType: 'Action', costRange: 'Touch (5 ft)', effect: 'Restore 3d6 HP to a creature. Targeting a limb mends sprains, fractures, and reduces Burn rank by 1 (cannot regrow missing limbs).', isUltimate: true },
+            { id: 'm2', name: 'Regenerative Kiss', actionType: 'Action', costRange: 'Prof/Long | 5 ft', effect: '24h Natural Regeneration: target heals 2× your CON mod at start of each turn, reduces Bleed/Queasy/Concussed/Burn by 1, adv on saves vs them.', isUltimate: false },
+            { id: 'm3', name: 'Quirk Recovery', actionType: 'Passive', costRange: 'Short Rest', effect: 'Allies spending Hit Dice on a Short Rest under your care add 2× your CON modifier to total healing.', isUltimate: false }
+          ]
+        };
+      } else if (presetKey === 'erasure') {
+        base.name = customName || 'Shota Trainee';
+        base.alias = customAlias || 'Nullgaze';
+        base.classId = 'striker';
+        base.specialization = 'Analyst Style';
+        base.classKeyStat = 'dex';
+        base.stats = { str: 12, dex: 17, con: 14, int: 13, wis: 15, cha: 8, tech: 10 };
+        base.saveProficiencies = { str: false, dex: true, con: false, int: false, wis: true, cha: false, tech: false };
+        base.skills = { acrobatics: 1, stealth: 1, perception: 1, insight: 1, athletics: 1 };
+        base.hp = { current: 18, max: 18, temp: 0 };
+        base.ac = 15;
+        base.quirk = {
+          name: 'Erasure',
+          type: 'Emitter',
+          rarity: 'Rare',
+          stat: 'wis',
+          strain: 0,
+          resourceLabel: 'Rounds Without Blinking (Prof)',
+          resourceCurrent: 2,
+          resourceMax: 2,
+          weakness: 'Requires clear line of sight. Taking damage requires DC 13 CON save to keep eyes open. Beyond Prof rounds without blinking: 2 eye dmg/turn. Blinking triggers 2-round cooldown.',
+          moves: [
+            { id: 'm1', name: 'Erase', actionType: 'Bonus Action', costRange: '150 ft Cone', effect: 'Nullify Quirks/abilities of creatures in cone for 4 rounds (beyond 150 ft: DC 14 Perception). Water in eyes extends duration + prevents eye damage. Lv 8: selective targeting.', isUltimate: true },
+            { id: 'm2', name: 'Iron Fists Combo', actionType: 'Action + Bonus', costRange: 'Melee (5 ft)', effect: 'Strike with Striker Martial Die (1d8) + DEX mod, plus free bonus-action strike or grapple/shove.', isUltimate: false }
+          ]
+        };
+        base.background.gear.push({ id: 'g2', name: 'Capturing Scarf (Planned)', active: true, notes: '45 ft reach restraint (Bonus Action)' });
+      }
+
+      return base;
+    }
+
+    // =========================================================================
+    // 3. STATE MANAGEMENT & LOCALSTORAGE
+    // =========================================================================
+    let state = {
+      characters: [],
+      activeId: null,
+      activeTab: 'combat',
+      rollLog: [],
+      diceOpen: false
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed.characters) && parsed.characters.length > 0) {
+            state.characters = parsed.characters;
+            state.activeId = parsed.activeId || parsed.characters[0].id;
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load MHA5e state:', e);
+      }
+      // First-time launch: seed with Hellflame preset so the HUD looks rich right away
+      const starter = createCharacterFromPreset('hellflame', 'Enji Trainee', 'Blazeflare');
+      state.characters = [starter];
+      state.activeId = starter.id;
+      saveState();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          characters: state.characters,
+          activeId: state.activeId
+        }));
+      } catch (e) {
+        showToast('Storage warning: Could not save to localStorage.', 'error');
+      }
+    }
+
+    function getActiveChar() {
+      return state.characters.find(c => c.id === state.activeId) || state.characters[0];
+    }
+
+    // Utility Math Helpers
+    const getMod = (score) => Math.floor(((Number(score) || 10) - 10) / 2);
+    const fmtMod = (m) => (m >= 0 ? `+${m}` : `${m}`);
+    const getProf = (lvl) => Math.ceil(Math.max(1, Math.min(20, Number(lvl) || 1)) / 4) + 1;
+
+    // =========================================================================
+    // 4. FULL UI RENDER ENGINE
+    // =========================================================================
+    function renderAll() {
+      const c = getActiveChar();
+      if (!c) return;
+
+      renderRosterDropdown();
+      renderHeader(c);
+      renderAbilityScores(c);
+      renderSkills(c);
+      renderCombatVitals(c);
+      renderSuperSuit(c);
+      renderCombatMechanics(c);
+      renderConditions(c);
+      renderQuirkTab(c);
+      renderPhysiologyAndClassTab(c);
+      renderBackgroundAndGearTab(c);
+      renderRollLog();
+    }
+
+    function renderRosterDropdown() {
+      const sel = document.getElementById('rosterSelect');
+      sel.innerHTML = state.characters.map(ch =>
+        `<option value="${ch.id}" ${ch.id === state.activeId ? 'selected' : ''}>
+          ${escapeHTML(ch.alias || ch.name)} (Lv.${ch.level})
+        </option>`
+      ).join('');
+    }
+
+    function renderHeader(c) {
+      document.getElementById('charName').value = c.name;
+      document.getElementById('charAlias').value = c.alias;
+      document.getElementById('charLevel').value = c.level;
+      document.getElementById('charXP').value = c.xp;
+
+      const prof = getProf(c.level);
+      document.getElementById('profBonusDisplay').textContent = `+${prof}`;
+
+      const physObj = PHYSIOLOGIES[c.physiology] || PHYSIOLOGIES.standard;
+      const clsObj = CLASSES[c.classId] || CLASSES.striker;
+      document.getElementById('badgePhysiology').textContent = physObj.name;
+      document.getElementById('badgeClass').textContent = `${clsObj.name} • ${c.specialization || 'Lv1'}`;
+      document.getElementById('badgeQuirk').textContent = c.quirk.name ? `Quirk: ${c.quirk.name}` : 'No Quirk Set';
+
+      // XP Progress Bar
+      const curThreshold = XP_THRESHOLDS[c.level - 1] || 0;
+      const nextThreshold = c.level < 20 ? XP_THRESHOLDS[c.level] : XP_THRESHOLDS[19];
+      let pct = 100;
+      if (c.level < 20) {
+        const span = Math.max(1, nextThreshold - curThreshold);
+        pct = Math.max(0, Math.min(100, ((c.xp - curThreshold) / span) * 100));
+        document.getElementById('xpNextLabel').textContent = `Next Lv: ${nextThreshold.toLocaleString()} XP`;
+      } else {
+        document.getElementById('xpNextLabel').textContent = 'MAX LEVEL (20)';
+      }
+      document.getElementById('xpBarFill').style.width = `${pct}%`;
+    }
+
+    function renderAbilityScores(c) {
+      const prof = getProf(c.level);
+      const grid = document.getElementById('abilityScoresGrid');
+      grid.innerHTML = ABILITIES.map(ab => {
+        const score = c.stats[ab.key] ?? 10;
+        const mod = getMod(score);
+        const isSaveProf = !!c.saveProficiencies[ab.key];
+        const saveBonus = mod + (isSaveProf ? prof : 0);
+        const isTech = ab.key === 'tech';
+
+        return `
+          <div class="bg-agency-900/90 border ${isTech ? 'border-cyan-500/40' : 'border-slate-700'} rounded-xl p-2.5 flex flex-col items-center text-center relative">
+            <span class="hud-title text-xs font-bold uppercase tracking-wider ${isTech ? 'text-cyan-400' : 'text-slate-400'}">${ab.label}</span>
+            <input type="number" min="1" max="30" value="${score}"
+              onchange="updateStat('${ab.key}', this.value)"
+              class="w-14 bg-agency-950 border border-slate-700 rounded-lg my-1 py-0.5 text-center hud-title text-xl font-bold text-white focus:outline-none focus:border-amber-400" />
+            <button onclick="rollCheck('${ab.name} Check', ${mod})" title="Roll ${ab.name} Check"
+              class="px-2.5 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-xs font-extrabold ${mod >= 0 ? 'text-amber-300' : 'text-rose-400'} transition mb-2">
+              ${fmtMod(mod)}
+            </button>
+            <!-- Saving Throw row -->
+            <div class="w-full pt-1.5 border-t border-slate-800 flex items-center justify-between text-[11px]">
+              <button onclick="toggleSaveProf('${ab.key}')" title="Toggle Saving Throw Proficiency"
+                class="w-4 h-4 rounded-full border flex items-center justify-center transition ${isSaveProf ? 'bg-cyan-400 border-cyan-300 text-slate-950' : 'border-slate-600 text-transparent hover:border-slate-400'}">
+                <i class="fa-solid fa-check text-[9px]"></i>
+              </button>
+              <button onclick="rollCheck('${ab.name} Save', ${saveBonus})" class="flex-1 text-right font-bold text-slate-300 hover:text-cyan-300 transition">
+                Save <span class="text-cyan-400 ml-0.5">${fmtMod(saveBonus)}</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSkills(c) {
+      const prof = getProf(c.level);
+      const list = document.getElementById('skillsList');
+      list.innerHTML = SKILLS.map(sk => {
+        const level = c.skills[sk.id] || 0; // 0 none, 1 prof, 2 expert
+        const mod = getMod(c.stats[sk.stat]);
+        const bonus = mod + (level === 2 ? prof * 2 : level === 1 ? prof : 0);
+
+        const dotClass = level === 2
+          ? 'bg-amber-400 border-amber-300 text-slate-950'
+          : level === 1
+          ? 'bg-cyan-400 border-cyan-300 text-slate-950'
+          : 'border-slate-600 text-transparent hover:border-slate-400';
+
+        const dotIcon = level === 2 ? 'fa-star' : 'fa-check';
+
+        return `
+          <div class="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-800/70 transition group">
+            <div class="flex items-center gap-2 min-w-0">
+              <button onclick="cycleSkill('${sk.id}')" title="Cycle None / Proficient / Expertise"
+                class="w-4 h-4 rounded-full border shrink-0 flex items-center justify-center transition ${dotClass}">
+                <i class="fa-solid ${dotIcon} text-[8px]"></i>
+              </button>
+              <button onclick="rollCheck('${sk.name}', ${bonus})" class="text-left truncate text-xs font-medium ${sk.badge ? 'text-cyan-200' : 'text-slate-200'} group-hover:text-white">
+                ${sk.name}
+                <span class="text-[10px] uppercase text-slate-500 ml-1">${sk.stat}</span>
+              </button>
+            </div>
+            <button onclick="rollCheck('${sk.name}', ${bonus})"
+              class="px-2 py-0.5 rounded bg-agency-900 border border-slate-700 group-hover:border-cyan-400/60 text-xs font-bold ${bonus >= 0 ? 'text-cyan-300' : 'text-rose-400'} shrink-0">
+              ${fmtMod(bonus)}
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      // Passive Perception
+      const percLvl = c.skills['perception'] || 0;
+      const percBonus = getMod(c.stats.wis) + (percLvl === 2 ? prof * 2 : percLvl === 1 ? prof : 0);
+      document.getElementById('passivePerceptionDisplay').textContent = 10 + percBonus;
+    }
+
+    function renderCombatVitals(c) {
+      document.getElementById('hpCurrent').value = c.hp.current;
+      document.getElementById('hpMax').value = c.hp.max;
+      document.getElementById('hpTemp').value = c.hp.temp;
+
+      const pct = Math.max(0, Math.min(100, (c.hp.current / Math.max(1, c.hp.max)) * 100));
+      const bar = document.getElementById('hpBarFill');
+      bar.style.width = `${pct}%`;
+      bar.className = 'h-full transition-all duration-300 ' + (
+        pct <= 25 ? 'bg-gradient-to-r from-rose-600 to-red-500' :
+        pct <= 50 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' :
+        'bg-gradient-to-r from-emerald-500 to-green-400'
+      );
+
+      document.getElementById('statAC').value = c.ac;
+      document.getElementById('statSpeed').value = c.speed;
+
+      const initMod = getMod(c.stats.dex);
+      document.getElementById('statInitDisplay').textContent = fmtMod(initMod);
+
+      const cls = CLASSES[c.classId];
+      const hdAvail = Math.max(0, c.level - (c.hitDiceUsed || 0));
+      document.getElementById('hitDieLabel').textContent = `HD (d${cls.hitDie})`;
+      document.getElementById('hitDiceDisplay').textContent = `${hdAvail}/${c.level}`;
+
+      // Class resource quick bar inside combat panel
+      const metrics = cls.getMetrics(c.level);
+      const resBox = document.getElementById('combatClassResourceBox');
+      resBox.innerHTML = `
+        <div>
+          <div class="text-[10px] font-bold uppercase text-cyan-400">${cls.name} • ${cls.resourceName}</div>
+          <div class="text-[11px] text-slate-400">${metrics.cards[0].label}: <strong class="text-white">${metrics.cards[0].val}</strong></div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="adjustClassResource(-1)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-white">-</button>
+          <span class="hud-title text-lg font-bold text-amber-400 min-w-[48px] text-center">${c.classResourceCurrent}/${metrics.resourceMax}</span>
+          <button onclick="adjustClassResource(1)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-white">+</button>
+        </div>
+      `;
+    }
+
+    function renderSuperSuit(c) {
+      document.getElementById('suitName').value = c.suit.name;
+      document.getElementById('suitDR').value = c.suit.dr;
+      document.getElementById('suitIntegrity').value = c.suit.integrity;
+      document.getElementById('suitMaxIntegrity').value = c.suit.maxIntegrity;
+
+      const pct = Math.max(0, Math.min(100, (c.suit.integrity / Math.max(1, c.suit.maxIntegrity)) * 100));
+      const bar = document.getElementById('suitIntegrityBar');
+      const badge = document.getElementById('suitStatusBadge');
+      const warn = document.getElementById('suitStatusWarning');
+
+      bar.style.width = `${pct}%`;
+
+      if (c.suit.integrity <= 0) {
+        badge.textContent = 'BROKEN';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/60';
+        bar.className = 'h-full bg-rose-500 transition-all duration-300';
+        warn.textContent = 'Suit Broken: Protective systems, DR, and perks are offline until repaired.';
+        warn.classList.remove('hidden');
+      } else if (c.suit.integrity <= 50) {
+        badge.textContent = 'TATTERED';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/60';
+        bar.className = 'h-full bg-amber-400 transition-all duration-300';
+        warn.textContent = 'Suit Tattered (≤50): -2 Damage Reduction & lose 2 Suit Perks of your choice.';
+        warn.classList.remove('hidden');
+      } else {
+        badge.textContent = 'OPERATIONAL';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50';
+        bar.className = 'h-full bg-cyan-400 transition-all duration-300';
+        warn.classList.add('hidden');
+      }
+
+      // Perks List
+      const perksEl = document.getElementById('suitPerksList');
+      if (!c.suit.perks || c.suit.perks.length === 0) {
+        perksEl.innerHTML = '<p class="text-[11px] text-slate-500 italic">No suit perks added.</p>';
+      } else {
+        perksEl.innerHTML = c.suit.perks.map((p, idx) => `
+          <div class="flex items-center gap-1.5">
+            <input type="text" value="${escapeHTML(p)}" onchange="updateSuitPerk(${idx}, this.value)"
+              class="flex-1 bg-agency-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-cyan-400" />
+            <button onclick="removeSuitPerk(${idx})" class="p-1 text-slate-500 hover:text-rose-400 transition"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderCombatMechanics(c) {
+      // Plus Ultra button
+      const puBtn = document.getElementById('plusUltraBtn');
+      if (c.combat.plusUltra) {
+        puBtn.textContent = '1';
+        puBtn.className = 'w-12 h-12 rounded-xl font-hud text-xl font-bold border-2 bg-amber-400 border-amber-200 text-slate-950 shadow-lg shadow-amber-400/30 transition flex items-center justify-center shrink-0';
+      } else {
+        puBtn.textContent = '0';
+        puBtn.className = 'w-12 h-12 rounded-xl font-hud text-xl font-bold border-2 bg-agency-950 border-slate-700 text-slate-500 hover:border-amber-400/50 transition flex items-center justify-center shrink-0';
+      }
+
+      // Evasion
+      const dex = c.stats.dex;
+      const dexMod = getMod(dex);
+      const evCtrl = document.getElementById('evasionControls');
+      const evDesc = document.getElementById('evasionDesc');
+      if (dex >= 15) {
+        const maxEv = Math.max(1, 1 + dexMod);
+        const rem = Math.max(0, maxEv - (c.combat.evasionUsed || 0));
+        evCtrl.innerHTML = `
+          <button onclick="adjustEvasion(-1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white">-</button>
+          <span class="hud-title text-sm font-bold text-cyan-300 px-1">${rem} / ${maxEv}</span>
+          <button onclick="adjustEvasion(1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white">+</button>
+        `;
+        evDesc.textContent = `Reaction: Move 10 ft out of attack range (1 + DEX mod = ${maxEv}/day).`;
+      } else {
+        evCtrl.innerHTML = `<span class="text-[11px] font-bold text-slate-500">Locked (DEX ${dex}/15)</span>`;
+        evDesc.textContent = 'Requires Dexterity 15 or higher to unlock reactive Evasion.';
+      }
+    }
+
+    function renderConditions(c) {
+      const grid = document.getElementById('conditionsGrid');
+      grid.innerHTML = CONDITIONS.map(cond => {
+        const val = c.combat.conditions[cond.id] || 0;
+        return `
+          <div class="bg-agency-900/90 border ${val > 0 ? 'border-rose-500/60' : 'border-slate-800'} rounded-xl px-3 py-2 flex items-center justify-between gap-2" title="${escapeHTML(cond.tip)}">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-bold ${val > 0 ? cond.color : 'text-slate-300'}">${cond.name}</span>
+                <span class="text-[10px] text-slate-500">(0-${cond.max})</span>
+              </div>
+              <p class="text-[10px] text-slate-400 truncate">${cond.tip}</p>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button onclick="adjustCondition('${cond.id}', -1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">-</button>
+              <span class="w-5 text-center hud-title text-sm font-bold ${val > 0 ? 'text-rose-400' : 'text-slate-500'}">${val}</span>
+              <button onclick="adjustCondition('${cond.id}', 1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">+</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderQuirkTab(c) {
+      const prof = getProf(c.level);
+      const cls = CLASSES[c.classId];
+      const metrics = cls.getMetrics(c.level);
+
+      document.getElementById('quirkName').value = c.quirk.name;
+      document.getElementById('quirkType').value = c.quirk.type;
+      document.getElementById('quirkRarity').value = c.quirk.rarity;
+      document.getElementById('quirkStat').value = c.quirk.stat;
+      document.getElementById('quirkWeakness').value = c.quirk.weakness;
+
+      // Calculate Quirk Save DC (Catalyst Power Source can override stat, all 3 classes grant DC bonus)
+      const statKey = c.quirk.stat || 'dex';
+      const quirkMod = getMod(c.stats[statKey]);
+      const dcBonus = metrics.dcBonus;
+      const totalDC = 8 + prof + quirkMod + dcBonus;
+
+      document.getElementById('quirkSaveDCDisplay').textContent = totalDC;
+      document.getElementById('quirkDCBreakdown').innerHTML =
+        `8 + <span class="text-cyan-400">${prof} (Prof)</span> + <span class="text-amber-300">${fmtMod(quirkMod)} (${statKey.toUpperCase()})</span> + <span class="text-emerald-400">${dcBonus} (${cls.name})</span> = <strong class="text-white">${totalDC}</strong>`;
+
+      // Strain Meter (0-15)
+      const strain = Math.max(0, Math.min(15, c.quirk.strain || 0));
+      document.getElementById('strainValueDisplay').textContent = `${strain} / 15`;
+      document.getElementById('strainDCDisplay').textContent = 8 + strain;
+      const strainBar = document.getElementById('strainBarFill');
+      const strainBadge = document.getElementById('strainStatusBadge');
+      strainBar.style.width = `${(strain / 15) * 100}%`;
+
+      if (strain >= 15) {
+        strainBadge.textContent = 'LOSS OF CONTROL (15)';
+        strainBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-500/20 text-rose-300 border border-rose-500';
+        strainBar.className = 'h-full bg-rose-500 transition-all duration-300';
+      } else if (strain >= 10) {
+        strainBadge.textContent = 'OVEREXERTED (DISADV)';
+        strainBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-500';
+        strainBar.className = 'h-full bg-amber-400 transition-all duration-300';
+      } else {
+        strainBadge.textContent = 'STABLE';
+        strainBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/50';
+        strainBar.className = 'h-full bg-cyan-400 transition-all duration-300';
+      }
+
+      // Custom Quirk Resource
+      document.getElementById('quirkResLabel').value = c.quirk.resourceLabel || '';
+      document.getElementById('quirkResCurrent').value = c.quirk.resourceCurrent ?? 0;
+      document.getElementById('quirkResMax').value = c.quirk.resourceMax ?? 10;
+      const resPct = c.quirk.resourceMax > 0
+        ? Math.max(0, Math.min(100, (c.quirk.resourceCurrent / c.quirk.resourceMax) * 100))
+        : 0;
+      document.getElementById('quirkResBar').style.width = `${resPct}%`;
+
+      // Moves List
+      const movesEl = document.getElementById('movesList');
+      if (!c.quirk.moves || c.quirk.moves.length === 0) {
+        movesEl.innerHTML = `<div class="col-span-full text-center py-8 bg-agency-900/60 border border-dashed border-slate-700 rounded-xl text-slate-400 text-xs">
+          No Quirk moves added yet. Click <strong>"Add Move / Ability"</strong> to add your techniques!
+        </div>`;
+      } else {
+        movesEl.innerHTML = c.quirk.moves.map(m => `
+          <div class="bg-agency-900/95 border border-slate-700 rounded-xl p-3.5 flex flex-col justify-between gap-2 transition ${m.isUltimate ? 'ultimate-glow' : ''}">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <button onclick="toggleUltimateMove('${m.id}')" title="Designate as Ultimate Move"
+                    class="text-base transition ${m.isUltimate ? 'text-amber-400 scale-110' : 'text-slate-600 hover:text-amber-300'}">
+                    <i class="fa-solid fa-star"></i>
+                  </button>
+                  <h3 class="hud-title font-bold text-sm text-white">${escapeHTML(m.name)}</h3>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <span class="px-2 py-0.5 rounded bg-slate-800 text-cyan-300 text-[10px] font-bold uppercase">${escapeHTML(m.actionType)}</span>
+                  <button onclick="openMoveModal('${m.id}')" class="p-1 text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-pen"></i></button>
+                  <button onclick="deleteMove('${m.id}')" class="p-1 text-slate-400 hover:text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </div>
+              ${m.costRange ? `<div class="text-[11px] font-semibold text-rose-300 mt-1">${escapeHTML(m.costRange)}</div>` : ''}
+              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">${escapeHTML(m.effect)}</p>
+            </div>
+            ${m.isUltimate ? `
+              <div class="mt-2 px-2.5 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/40 text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-bolt"></i> ULTIMATE MOVE: +1 Damage Die • +10 ft Range/Area • +2 Rds Duration
+              </div>
+            ` : ''}
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderPhysiologyAndClassTab(c) {
+      // Physiology
+      document.getElementById('physiologySelect').value = c.physiology;
+      const phys = PHYSIOLOGIES[c.physiology] || PHYSIOLOGIES.standard;
+      document.getElementById('physiologyDetails').innerHTML = `
+        <div class="text-amber-300 font-bold text-xs uppercase tracking-wide">Stat Bonuses: ${phys.bonuses}</div>
+        <ul class="list-disc list-inside space-y-1 text-slate-300 mt-1.5">
+          ${phys.traits.map(t => `<li>${t}</li>`).join('')}
+        </ul>
+      `;
+
+      const mutBox = document.getElementById('heteromorphMutationsBox');
+      if (c.physiology === 'heteromorph') {
+        mutBox.classList.remove('hidden');
+        document.getElementById('mutationCountBadge').textContent = `${(c.mutations || []).length} / 2 Selected`;
+        document.getElementById('mutationsChecklist').innerHTML = HETEROMORPH_MUTATIONS.map(m => {
+          const checked = (c.mutations || []).includes(m.id);
+          return `
+            <label class="flex items-start gap-2 p-2 rounded-lg bg-agency-950/70 border ${checked ? 'border-amber-400/60' : 'border-slate-800'} cursor-pointer">
+              <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleMutation('${m.id}')" class="mt-0.5 rounded bg-agency-900 border-slate-600 text-amber-400 focus:ring-0" />
+              <span><strong class="text-white">${m.id}:</strong> <span class="text-slate-400">${m.desc}</span></span>
+            </label>
+          `;
+        }).join('');
+      } else {
+        mutBox.classList.add('hidden');
+      }
+
+      // Class Engine
+      const cls = CLASSES[c.classId] || CLASSES.striker;
+      const metrics = cls.getMetrics(c.level);
+
+      document.getElementById('classSelect').value = c.classId;
+      document.getElementById('classHitDieBadge').textContent = `Hit Die: 1d${cls.hitDie}`;
+      document.getElementById('classKeyStatLabel').textContent = cls.keyStatLabel;
+      document.getElementById('classKeyStatSelect').value = c.classKeyStat || 'str';
+
+      const specSel = document.getElementById('classSpecSelect');
+      specSel.innerHTML = cls.specs.map(s => `<option value="${s}" ${c.specialization === s ? 'selected' : ''}>${s}</option>`).join('');
+
+      document.getElementById('classScaledMetrics').innerHTML = metrics.cards.map(card => `
+        <div class="bg-agency-900 border border-slate-700 rounded-xl p-3 text-center">
+          <div class="text-[10px] font-bold uppercase text-slate-400">${card.label}</div>
+          <div class="hud-title text-xl font-bold ${card.color} mt-0.5">${card.val}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('classResourcePanel').innerHTML = `
+        <div>
+          <div class="hud-title text-sm font-bold uppercase text-cyan-300">${cls.resourceName}</div>
+          <div class="text-[11px] text-slate-400">Recharges on: ${cls.resourceRest}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="adjustClassResource(-1)" class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-lg">-</button>
+          <span class="hud-title text-2xl font-bold text-amber-400 min-w-[64px] text-center">${c.classResourceCurrent} / ${metrics.resourceMax}</span>
+          <button onclick="adjustClassResource(1)" class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-lg">+</button>
+          <button onclick="refillClassResource()" class="px-2.5 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 text-xs font-bold">Refill</button>
+        </div>
+      `;
+
+      document.getElementById('classFeatureSummary').innerHTML = `
+        <div class="text-[10px] font-bold uppercase text-slate-400 mb-1">Core Class Features &amp; Durability Milestones (Lv ${cls.durabilityLevels.join(', ')})</div>
+        ${metrics.summary.map(line => `<p>• ${line}</p>`).join('')}
+      `;
+    }
+
+    function renderBackgroundAndGearTab(c) {
+      document.getElementById('bgSelect').value = c.background.name;
+      document.getElementById('bgContact').value = c.background.contact || '';
+      document.getElementById('bgProgName').value = c.background.progressName || '';
+      document.getElementById('bgProgPoints').value = c.background.progressPoints ?? 0;
+      document.getElementById('bgDrawback').value = c.background.drawback || '';
+      document.getElementById('bgYen').value = c.background.yen ?? 0;
+      document.getElementById('bgFTP').value = c.background.ftp ?? 0;
+      document.getElementById('isProToggle').checked = !!c.background.isPro;
+      document.getElementById('bgFeats').value = c.background.feats || '';
+      document.getElementById('bgBackstory').value = c.background.backstory || '';
+
+      const limit = c.background.isPro ? 4 : 3;
+      const activeCount = (c.background.gear || []).filter(g => g.active).length;
+      const limitBadge = document.getElementById('gearLimitBadge');
+      limitBadge.textContent = `Active Gear: ${activeCount} / ${limit}`;
+      limitBadge.className = activeCount > limit
+        ? 'px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500 text-xs font-bold text-rose-300'
+        : 'px-2.5 py-1 rounded-lg bg-agency-900 border border-slate-700 text-xs font-bold text-cyan-300';
+
+      const gearEl = document.getElementById('gearList');
+      if (!c.background.gear || c.background.gear.length === 0) {
+        gearEl.innerHTML = '<p class="text-xs text-slate-500 italic">No support items or weapons yet.</p>';
+      } else {
+        gearEl.innerHTML = c.background.gear.map((g, idx) => `
+          <div class="bg-agency-900 border ${g.active ? 'border-cyan-500/40' : 'border-slate-800'} rounded-xl p-2.5 flex flex-wrap sm:flex-nowrap items-center gap-2">
+            <label class="inline-flex items-center gap-1.5 text-[11px] font-bold ${g.active ? 'text-cyan-300' : 'text-slate-500'} shrink-0 cursor-pointer" title="Toggle Active Hero Gear Slot">
+              <input type="checkbox" ${g.active ? 'checked' : ''} onchange="toggleGearActive(${idx})" class="rounded bg-agency-950 border-slate-600 text-cyan-400 focus:ring-0" />
+              Active
+            </label>
+            <input type="text" value="${escapeHTML(g.name)}" placeholder="Item / Weapon Name" onchange="updateGearField(${idx}, 'name', this.value)"
+              class="flex-1 min-w-[140px] bg-agency-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-bold text-white" />
+            <input type="text" value="${escapeHTML(g.notes)}" placeholder="Stats, HP, or Notes" onchange="updateGearField(${idx}, 'notes', this.value)"
+              class="flex-1 min-w-[140px] bg-agency-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-300" />
+            <button onclick="removeGearItem(${idx})" class="p-1.5 text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash-can text-xs"></i></button>
+          </div>
+        `).join('');
+      }
+    }
+
+    // =========================================================================
+    // 5. EVENT BINDINGS & MUTATORS
+    // =========================================================================
+    function bindStaticInputs() {
+      document.getElementById('rosterSelect').addEventListener('change', (e) => {
+        state.activeId = e.target.value;
+        saveState();
+        renderAll();
+      });
+
+      const bindField = (id, setter) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', (e) => {
+          const c = getActiveChar();
+          setter(c, e.target);
+          saveState();
+          renderAll();
+        });
+      };
+
+      bindField('charName', (c, el) => { c.name = el.value.trim() || 'Unnamed Hero'; });
+      bindField('charAlias', (c, el) => { c.alias = el.value.trim(); });
+      bindField('charLevel', (c, el) => {
+        c.level = Math.max(1, Math.min(20, parseInt(el.value) || 1));
+        const maxRes = CLASSES[c.classId].getMetrics(c.level).resourceMax;
+        if (c.classResourceCurrent > maxRes) c.classResourceCurrent = maxRes;
+      });
+      bindField('charXP', (c, el) => { c.xp = Math.max(0, parseInt(el.value) || 0); });
+
+      bindField('hpCurrent', (c, el) => { c.hp.current = Math.max(0, parseInt(el.value) || 0); });
+      bindField('hpMax', (c, el) => { c.hp.max = Math.max(1, parseInt(el.value) || 1); });
+      bindField('hpTemp', (c, el) => { c.hp.temp = Math.max(0, parseInt(el.value) || 0); });
+      bindField('statAC', (c, el) => { c.ac = parseInt(el.value) || 10; });
+      bindField('statSpeed', (c, el) => { c.speed = parseInt(el.value) || 30; });
+
+      bindField('suitName', (c, el) => { c.suit.name = el.value; });
+      bindField('suitDR', (c, el) => { c.suit.dr = Math.max(0, parseInt(el.value) || 0); });
+      bindField('suitIntegrity', (c, el) => { c.suit.integrity = Math.max(0, parseInt(el.value) || 0); });
+      bindField('suitMaxIntegrity', (c, el) => { c.suit.maxIntegrity = Math.max(1, parseInt(el.value) || 100); });
+
+      bindField('quirkName', (c, el) => { c.quirk.name = el.value; });
+      bindField('quirkType', (c, el) => { c.quirk.type = el.value; });
+      bindField('quirkRarity', (c, el) => { c.quirk.rarity = el.value; });
+      bindField('quirkStat', (c, el) => { c.quirk.stat = el.value; });
+      bindField('quirkWeakness', (c, el) => { c.quirk.weakness = el.value; });
+      bindField('quirkResLabel', (c, el) => { c.quirk.resourceLabel = el.value; });
+      bindField('quirkResCurrent', (c, el) => { c.quirk.resourceCurrent = parseInt(el.value) || 0; });
+      bindField('quirkResMax', (c, el) => { c.quirk.resourceMax = Math.max(0, parseInt(el.value) || 0); });
+
+      bindField('physiologySelect', (c, el) => { c.physiology = el.value; });
+      bindField('classSelect', (c, el) => {
+        c.classId = el.value;
+        c.specialization = CLASSES[c.classId].specs[0];
+        c.classResourceCurrent = CLASSES[c.classId].getMetrics(c.level).resourceMax;
+      });
+      bindField('classKeyStatSelect', (c, el) => { c.classKeyStat = el.value; });
+      bindField('classSpecSelect', (c, el) => { c.specialization = el.value; });
+
+      bindField('bgSelect', (c, el) => {
+        c.background.name = el.value;
+        const def = BACKGROUND_DEFAULTS[el.value];
+        if (def) {
+          c.background.progressName = def.prog;
+          c.background.drawback = def.drawback;
+          c.background.isPro = def.isPro;
+        }
+      });
+      bindField('bgContact', (c, el) => { c.background.contact = el.value; });
+      bindField('bgProgName', (c, el) => { c.background.progressName = el.value; });
+      bindField('bgProgPoints', (c, el) => { c.background.progressPoints = Math.max(0, parseInt(el.value) || 0); });
+      bindField('bgDrawback', (c, el) => { c.background.drawback = el.value; });
+      bindField('bgYen', (c, el) => { c.background.yen = Math.max(0, parseInt(el.value) || 0); });
+      bindField('bgFTP', (c, el) => { c.background.ftp = Math.max(0, parseInt(el.value) || 0); });
+      bindField('isProToggle', (c, el) => { c.background.isPro = el.checked; });
+      bindField('bgFeats', (c, el) => { c.background.feats = el.value; });
+      bindField('bgBackstory', (c, el) => { c.background.backstory = el.value; });
+    }
+
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const isActive = btn.dataset.tab === tabName;
+        btn.className = `tab-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-hud font-bold text-sm uppercase tracking-wider transition flex items-center gap-2 border ${
+          isActive
+            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-md shadow-cyan-500/10'
+            : 'bg-agency-800/80 border-slate-700/80 text-slate-400 hover:text-white hover:border-slate-500'
+        }`;
+      });
+    }
+
+    // Stat & Skill Actions
+    function updateStat(key, val) {
+      const c = getActiveChar();
+      c.stats[key] = Math.max(1, Math.min(30, parseInt(val) || 10));
+      saveState();
+      renderAll();
+    }
+
+    function toggleSaveProf(key) {
+      const c = getActiveChar();
+      c.saveProficiencies[key] = !c.saveProficiencies[key];
+      saveState();
+      renderAll();
+    }
+
+    function cycleSkill(skillId) {
+      const c = getActiveChar();
+      c.skills[skillId] = ((c.skills[skillId] || 0) + 1) % 3;
+      saveState();
+      renderAll();
+    }
+
+    // Combat Vitals Actions
+    function adjustHP(sign) {
+      const c = getActiveChar();
+      let amt = Math.max(1, parseInt(document.getElementById('hpDeltaInput').value) || 1);
+      if (sign < 0) {
+        // Absorb Temp HP first
+        if (c.hp.temp > 0) {
+          const absorbed = Math.min(c.hp.temp, amt);
+          c.hp.temp -= absorbed;
+          amt -= absorbed;
+        }
+        c.hp.current = Math.max(0, c.hp.current - amt);
+      } else {
+        c.hp.current = Math.min(c.hp.max, c.hp.current + amt);
+      }
+      saveState();
+      renderAll();
+    }
+
+    function autoCalcLv1HP() {
+      const c = getActiveChar();
+      const conMod = getMod(c.stats.con);
+      const cls = CLASSES[c.classId];
+      // MHA5e Formula: Base + CON + (ImprovedDurabilityBase + floor(CON/2))
+      const durability = cls.durabilityBase + Math.floor(conMod / 2);
+      const total = Math.max(1, cls.hitDie + conMod + durability);
+      c.hp.max = total;
+      c.hp.current = total;
+      saveState();
+      renderAll();
+      showToast(`Lv 1 HP calculated: ${total} (${cls.hitDie} + ${conMod} CON + ${durability} Durability)`, 'success');
+    }
+
+    function adjustHitDice(delta) {
+      const c = getActiveChar();
+      const avail = Math.max(0, c.level - (c.hitDiceUsed || 0));
+      const nextAvail = Math.max(0, Math.min(c.level, avail + delta));
+      c.hitDiceUsed = c.level - nextAvail;
+      saveState();
+      renderAll();
+    }
+
+    function adjustClassResource(delta) {
+      const c = getActiveChar();
+      const maxRes = CLASSES[c.classId].getMetrics(c.level).resourceMax;
+      c.classResourceCurrent = Math.max(0, Math.min(maxRes, (c.classResourceCurrent || 0) + delta));
+      saveState();
+      renderAll();
+    }
+
+    function refillClassResource() {
+      const c = getActiveChar();
+      c.classResourceCurrent = CLASSES[c.classId].getMetrics(c.level).resourceMax;
+      saveState();
+      renderAll();
+      showToast('Class resource refilled!', 'success');
+    }
+
+    // Super Suit Actions
+    function adjustSuitIntegrity(delta) {
+      const c = getActiveChar();
+      c.suit.integrity = Math.max(0, Math.min(c.suit.maxIntegrity, (c.suit.integrity || 0) + delta));
+      saveState();
+      renderAll();
+    }
+
+    function addSuitPerk() {
+      const c = getActiveChar();
+      c.suit.perks.push('New Suit Perk');
+      saveState();
+      renderAll();
+    }
+
+    function updateSuitPerk(idx, val) {
+      const c = getActiveChar();
+      c.suit.perks[idx] = val;
+      saveState();
+    }
+
+    function removeSuitPerk(idx) {
+      const c = getActiveChar();
+      c.suit.perks.splice(idx, 1);
+      saveState();
+      renderAll();
+    }
+
+    // MHA5e Combat Mechanics & Conditions
+    function togglePlusUltra() {
+      const c = getActiveChar();
+      c.combat.plusUltra = !c.combat.plusUltra;
+      saveState();
+      renderAll();
+      showToast(c.combat.plusUltra ? 'PLUS ULTRA! Point gained.' : 'Plus Ultra point spent!', 'info');
+    }
+
+    function adjustEvasion(delta) {
+      const c = getActiveChar();
+      const maxEv = Math.max(1, 1 + getMod(c.stats.dex));
+      const rem = Math.max(0, maxEv - (c.combat.evasionUsed || 0));
+      const nextRem = Math.max(0, Math.min(maxEv, rem + delta));
+      c.combat.evasionUsed = maxEv - nextRem;
+      saveState();
+      renderAll();
+    }
+
+    function adjustCondition(id, delta) {
+      const c = getActiveChar();
+      const def = CONDITIONS.find(x => x.id === id);
+      c.combat.conditions[id] = Math.max(0, Math.min(def.max, (c.combat.conditions[id] || 0) + delta));
+      saveState();
+      renderAll();
+    }
+
+    function clearAllConditions() {
+      const c = getActiveChar();
+      CONDITIONS.forEach(cond => { c.combat.conditions[cond.id] = 0; });
+      saveState();
+      renderAll();
+      showToast('All ranked conditions cleared.', 'success');
+    }
+
+    // Quirk Strain & Resource
+    function adjustStrain(delta) {
+      const c = getActiveChar();
+      c.quirk.strain = Math.max(0, Math.min(15, (c.quirk.strain || 0) + delta));
+      saveState();
+      renderAll();
+    }
+
+    function resetStrain() {
+      const c = getActiveChar();
+      c.quirk.strain = 0;
+      saveState();
+      renderAll();
+    }
+
+    function adjustQuirkResource(delta) {
+      const c = getActiveChar();
+      c.quirk.resourceCurrent = Math.max(0, (c.quirk.resourceCurrent || 0) + delta);
+      saveState();
+      renderAll();
+    }
+
+    function toggleUltimateMove(moveId) {
+      const c = getActiveChar();
+      c.quirk.moves.forEach(m => {
+        m.isUltimate = (m.id === moveId) ? !m.isUltimate : false;
+      });
+      saveState();
+      renderAll();
+    }
+
+    function deleteMove(moveId) {
+      const c = getActiveChar();
+      c.quirk.moves = c.quirk.moves.filter(m => m.id !== moveId);
+      saveState();
+      renderAll();
+    }
+
+    // Physiology & Gear
+    function toggleMutation(mutId) {
+      const c = getActiveChar();
+      if (!c.mutations) c.mutations = [];
+      if (c.mutations.includes(mutId)) {
+        c.mutations = c.mutations.filter(m => m !== mutId);
+      } else {
+        c.mutations.push(mutId);
+      }
+      saveState();
+      renderAll();
+    }
+
+    function adjustFTP(delta) {
+      const c = getActiveChar();
+      c.background.ftp = Math.max(0, (c.background.ftp || 0) + delta);
+      saveState();
+      renderAll();
+    }
+
+    function addGearItem() {
+      const c = getActiveChar();
+      c.background.gear.push({ id: 'g_' + Date.now(), name: 'New Support Item', active: true, notes: '' });
+      saveState();
+      renderAll();
+    }
+
+    function toggleGearActive(idx) {
+      const c = getActiveChar();
+      c.background.gear[idx].active = !c.background.gear[idx].active;
+      saveState();
+      renderAll();
+    }
+
+    function updateGearField(idx, field, val) {
+      const c = getActiveChar();
+      c.background.gear[idx][field] = val;
+      saveState();
+    }
+
+    function removeGearItem(idx) {
+      const c = getActiveChar();
+      c.background.gear.splice(idx, 1);
+      saveState();
+      renderAll();
+    }
+
+    // =========================================================================
+    // 6. MHA5e REST SYSTEM
+    // =========================================================================
+    function performRest(type) {
+      const c = getActiveChar();
+      const cls = CLASSES[c.classId];
+      const maxRes = cls.getMetrics(c.level).resourceMax;
+
+      if (type === 'short') {
+        c.quirk.strain = 0;
+        if (c.classId === 'striker' || c.classId === 'arsenal') {
+          c.classResourceCurrent = maxRes;
+        } else if (c.classId === 'catalyst' && c.level >= 13) {
+          c.classResourceCurrent = Math.min(maxRes, c.classResourceCurrent + Math.floor(c.level / 2));
+        }
+        showToast('Short Rest complete: Strain reset & short-rest resources restored.', 'success');
+      } else if (type === 'long') {
+        c.quirk.strain = 0;
+        c.classResourceCurrent = maxRes;
+        c.combat.evasionUsed = 0;
+        // MHA5e Rule: Long Rest regains HALF of maximum HP
+        const healAmt = Math.ceil(c.hp.max / 2);
+        c.hp.current = Math.min(c.hp.max, c.hp.current + healAmt);
+        showToast(`Long Rest complete: Healed +${healAmt} HP (½ Max per MHA5e), reset Output & daily uses.`, 'success');
+      } else if (type === 'full') {
+        c.quirk.strain = 0;
+        c.classResourceCurrent = maxRes;
+        c.combat.evasionUsed = 0;
+        c.hp.current = c.hp.max;
+        c.hitDiceUsed = 0;
+        CONDITIONS.forEach(cond => { c.combat.conditions[cond.id] = 0; });
+        showToast('Full Rest (24h) complete: Full HP, all Hit Dice restored, conditions cleared!', 'success');
+      }
+      saveState();
+      renderAll();
+    }
+
+    // =========================================================================
+    // 7. DICE ROLLER & ROLL LOG
+    // =========================================================================
+    function toggleDiceTray() {
+      state.diceOpen = !state.diceOpen;
+      document.getElementById('diceTrayBody').classList.toggle('hidden', !state.diceOpen);
+      document.getElementById('diceToggleIcon').className = state.diceOpen
+        ? 'fa-solid fa-chevron-down text-slate-400 text-xs'
+        : 'fa-solid fa-chevron-up text-slate-400 text-xs';
+    }
+
+    function pushRoll(label, total, detail, highlight = '') {
+      state.rollLog.unshift({
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        label,
+        total,
+        detail,
+        highlight
+      });
+      if (state.rollLog.length > 25) state.rollLog.pop();
+
+      const badge = document.getElementById('lastRollBadge');
+      badge.textContent = `${label}: ${total}`;
+      badge.classList.remove('hidden');
+
+      if (!state.diceOpen) toggleDiceTray();
+      renderRollLog();
+    }
+
+    function rollCustomDie(sides) {
+      const r = Math.floor(Math.random() * sides) + 1;
+      const hi = (sides === 20 && r === 20) ? 'crit' : (sides === 20 && r === 1) ? 'fumble' : '';
+      pushRoll(`1d${sides}`, r, `Rolled ${r} on d${sides}`, hi);
+    }
+
+    function rollCheck(label, bonus) {
+      const r = Math.floor(Math.random() * 20) + 1;
+      const total = r + bonus;
+      const hi = r === 20 ? 'crit' : r === 1 ? 'fumble' : '';
+      pushRoll(label, total, `d20(${r}) ${fmtMod(bonus)}`, hi);
+    }
+
+    function rollInitiative() {
+      const c = getActiveChar();
+      rollCheck('Initiative', getMod(c.stats.dex));
+    }
+
+    function rollQuirkControlCheck() {
+      const c = getActiveChar();
+      const mod = getMod(c.stats[c.quirk.stat || 'dex']);
+      const strain = c.quirk.strain || 0;
+      const dc = 8 + strain;
+      const r1 = Math.floor(Math.random() * 20) + 1;
+      let r = r1;
+      let rollText = `d20(${r1})`;
+      if (strain >= 10) {
+        const r2 = Math.floor(Math.random() * 20) + 1;
+        r = Math.min(r1, r2);
+        rollText = `Disadv d20(${r1}, ${r2})→${r}`;
+      }
+      const total = r + mod;
+      const pass = total >= dc;
+      pushRoll(
+        'Quirk Control',
+        total,
+        `${rollText} ${fmtMod(mod)} vs DC ${dc} → ${pass ? 'SUCCESS' : 'FAILED (Strain Resets)'}`,
+        pass ? 'crit' : 'fumble'
+      );
+    }
+
+    function clearRollLog() {
+      state.rollLog = [];
+      document.getElementById('lastRollBadge').classList.add('hidden');
+      renderRollLog();
+    }
+
+    function renderRollLog() {
+      const feed = document.getElementById('rollLogFeed');
+      if (state.rollLog.length === 0) {
+        feed.innerHTML = '<p class="text-slate-500 italic text-center py-4">Click any skill, save, initiative, or die above to roll.</p>';
+        return;
+      }
+      feed.innerHTML = state.rollLog.map(item => `
+        <div class="bg-agency-900 border ${item.highlight === 'crit' ? 'border-emerald-500/60' : item.highlight === 'fumble' ? 'border-rose-500/60' : 'border-slate-800'} rounded-lg px-2.5 py-1.5 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="font-bold text-slate-200 truncate">${escapeHTML(item.label)} <span class="text-[10px] text-slate-500 font-normal">${item.time}</span></div>
+            <div class="text-[11px] text-slate-400">${escapeHTML(item.detail)}</div>
+          </div>
+          <div class="hud-title text-lg font-bold ${item.highlight === 'crit' ? 'text-emerald-400' : item.highlight === 'fumble' ? 'text-rose-400' : 'text-amber-400'} shrink-0">${item.total}</div>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================================
+    // 8. MODALS (NEW HERO, DELETE, STAT HELPER, LEVEL UP, MOVES, IMPORT)
+    // =========================================================================
+    function openModal(html) {
+      document.getElementById('modalContent').innerHTML = html;
+      const bd = document.getElementById('modalBackdrop');
+      bd.classList.remove('hidden');
+      bd.classList.add('flex');
+    }
+
+    function closeModal() {
+      const bd = document.getElementById('modalBackdrop');
+      bd.classList.add('hidden');
+      bd.classList.remove('flex');
+    }
+
+    // 8a. New Hero Modal
+    function openNewHeroModal() {
+      openModal(`
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <h3 class="hud-title text-lg font-bold uppercase text-amber-400"><i class="fa-solid fa-user-plus mr-1.5"></i>Create New Hero</h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Character Name</label>
+              <input id="newHeroName" type="text" placeholder="Optional" class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Hero Alias</label>
+              <input id="newHeroAlias" type="text" placeholder="Optional" class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-amber-300" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Choose Quick-Start Template</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button onclick="confirmNewHero('blank')" class="p-3 rounded-xl bg-agency-900 hover:bg-slate-800 border border-slate-700 text-left transition">
+                <div class="font-bold text-white text-sm">Blank Hero</div>
+                <div class="text-[11px] text-slate-400">Clean Level 1 sheet ready to customize</div>
+              </button>
+              <button onclick="confirmNewHero('hellflame')" class="p-3 rounded-xl bg-agency-900 hover:bg-rose-950/60 border border-rose-500/40 text-left transition">
+                <div class="font-bold text-rose-300 text-sm"><i class="fa-solid fa-fire mr-1"></i>Hellflame Preset</div>
+                <div class="text-[11px] text-slate-400">Catalyst • Heat Points &amp; Fire Moves</div>
+              </button>
+              <button onclick="confirmNewHero('arbor')" class="p-3 rounded-xl bg-agency-900 hover:bg-emerald-950/60 border border-emerald-500/40 text-left transition">
+                <div class="font-bold text-emerald-300 text-sm"><i class="fa-solid fa-tree mr-1"></i>Arbor Preset</div>
+                <div class="text-[11px] text-slate-400">Catalyst • Root Grasp &amp; Control</div>
+              </button>
+              <button onclick="confirmNewHero('heal')" class="p-3 rounded-xl bg-agency-900 hover:bg-cyan-950/60 border border-cyan-500/40 text-left transition">
+                <div class="font-bold text-cyan-300 text-sm"><i class="fa-solid fa-heart-pulse mr-1"></i>Heal Preset</div>
+                <div class="text-[11px] text-slate-400">Catalyst • Healing &amp; Regenerative Kiss</div>
+              </button>
+              <button onclick="confirmNewHero('erasure')" class="sm:col-span-2 p-3 rounded-xl bg-agency-900 hover:bg-amber-950/50 border border-amber-500/40 text-left transition">
+                <div class="font-bold text-amber-300 text-sm"><i class="fa-solid fa-eye-slash mr-1"></i>Erasure Preset</div>
+                <div class="text-[11px] text-slate-400">Striker • 150 ft Quirk Nullification Cone &amp; Martial Arts</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    function confirmNewHero(preset) {
+      const name = document.getElementById('newHeroName').value.trim();
+      const alias = document.getElementById('newHeroAlias').value.trim();
+      const hero = createCharacterFromPreset(preset, name, alias);
+      state.characters.push(hero);
+      state.activeId = hero.id;
+      saveState();
+      closeModal();
+      renderAll();
+      showToast(`Created ${hero.alias || hero.name}!`, 'success');
+    }
+
+    // 8b. Delete Confirmation Modal
+    function openDeleteModal() {
+      const c = getActiveChar();
+      if (state.characters.length <= 1) {
+        showToast('You must keep at least one character in the roster.', 'error');
+        return;
+      }
+      openModal(`
+        <div class="space-y-3">
+          <h3 class="hud-title text-lg font-bold uppercase text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>Delete Hero?</h3>
+          <p class="text-sm text-slate-300">Are you sure you want to permanently delete <strong>${escapeHTML(c.alias || c.name)}</strong> from your local roster?</p>
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">Cancel</button>
+            <button onclick="confirmDeleteHero()" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white">Delete Permanently</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function confirmDeleteHero() {
+      state.characters = state.characters.filter(ch => ch.id !== state.activeId);
+      state.activeId = state.characters[0].id;
+      saveState();
+      closeModal();
+      renderAll();
+      showToast('Hero deleted.', 'info');
+    }
+
+    // 8c. Standard Array / 4d6 Drop Lowest Helper Modal
+    let generatedStatPool = [];
+    function openStatHelperModal(mode) {
+      if (mode === 'array') {
+        generatedStatPool = [15, 14, 13, 13, 12, 10, 8];
+      } else {
+        generatedStatPool = Array.from({ length: 7 }, () => {
+          const rolls = Array.from({ length: 4 }, () => Math.floor(Math.random() * 6) + 1).sort((a, b) => a - b);
+          return rolls[1] + rolls[2] + rolls[3];
+        }).sort((a, b) => b - a);
+      }
+
+      const poolBadges = generatedStatPool.map(n => `<span class="px-2.5 py-1 rounded-lg bg-amber-400/20 border border-amber-400/50 hud-title font-bold text-amber-300">${n}</span>`).join('');
+
+      openModal(`
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <h3 class="hud-title text-lg font-bold uppercase text-cyan-400">${mode === 'array' ? 'MHA5e Standard Array' : '4d6 Drop Lowest (×7)'}</h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="space-y-3">
+          <div class="flex flex-wrap gap-1.5 justify-center">${poolBadges}</div>
+          <p class="text-xs text-slate-400 text-center">Assign each rolled number to one of your 7 stats (then add your Physiology bonuses manually).</p>
+          <div class="grid grid-cols-2 gap-2">
+            ${ABILITIES.map((ab, idx) => `
+              <div class="flex items-center justify-between bg-agency-900 border border-slate-700 rounded-lg px-2.5 py-1.5">
+                <span class="text-xs font-bold text-slate-200">${ab.label}</span>
+                <input id="assign_${ab.key}" type="number" min="1" max="30" value="${generatedStatPool[idx]}"
+                  class="w-14 bg-agency-950 border border-slate-700 rounded py-0.5 text-center text-sm font-bold text-cyan-300" />
+              </div>
+            `).join('')}
+          </div>
+          <div class="flex justify-between items-center pt-2">
+            ${mode === 'roll' ? `<button onclick="openStatHelperModal('roll')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyan-300"><i class="fa-solid fa-rotate mr-1"></i>Reroll All</button>` : '<span></span>'}
+            <div class="flex gap-2">
+              <button onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-800 text-xs font-bold text-slate-300">Cancel</button>
+              <button onclick="applyStatHelper()" class="px-4 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-xs font-bold text-slate-950">Apply Stats</button>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    function applyStatHelper() {
+      const c = getActiveChar();
+      ABILITIES.forEach(ab => {
+        const val = parseInt(document.getElementById(`assign_${ab.key}`).value) || 10;
+        c.stats[ab.key] = Math.max(1, Math.min(30, val));
+      });
+      saveState();
+      closeModal();
+      renderAll();
+      showToast('7 Ability Scores updated!', 'success');
+    }
+
+    // 8d. Level-Up Helper Modal
+    function openLevelUpModal() {
+      const c = getActiveChar();
+      if (c.level >= 20) {
+        showToast('Character is already at Maximum Level 20!', 'info');
+        return;
+      }
+      const nextLvl = c.level + 1;
+      const cls = CLASSES[c.classId];
+      const conMod = getMod(c.stats.con);
+      const avgDie = (cls.hitDie / 2) + 1;
+      const isDurabilityMilestone = cls.durabilityLevels.includes(nextLvl);
+      const durBonus = isDurabilityMilestone ? (cls.durabilityBase + Math.floor(conMod / 2)) : 0;
+
+      openModal(`
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <h3 class="hud-title text-lg font-bold uppercase text-emerald-400"><i class="fa-solid fa-arrow-up-right-dots mr-1.5"></i>Level Up: Lv ${c.level} → Lv ${nextLvl}</h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="space-y-3 text-xs text-slate-300">
+          <p>Class: <strong class="text-white">${cls.name} (1d${cls.hitDie})</strong> • CON Mod: <strong class="text-cyan-300">${fmtMod(conMod)}</strong></p>
+          ${isDurabilityMilestone ? `
+            <div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 font-semibold">
+              <i class="fa-solid fa-shield-heart mr-1"></i> Improved Durability Milestone at Level ${nextLvl}! Extra <strong>+${durBonus} HP</strong> automatically included.
+            </div>
+          ` : ''}
+          <div class="bg-agency-900 border border-slate-700 rounded-xl p-3 space-y-2">
+            <label class="block text-[10px] font-bold uppercase text-slate-400">Hit Die Roll (1–${cls.hitDie})</label>
+            <div class="flex items-center gap-2">
+              <input id="lvlUpRollInput" type="number" min="1" max="${cls.hitDie}" value="${avgDie}"
+                class="w-20 bg-agency-950 border border-slate-700 rounded-lg py-1.5 text-center hud-title text-lg font-bold text-amber-400" />
+              <button onclick="rollLevelUpDie(${cls.hitDie})" class="px-3 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 font-bold">
+                <i class="fa-solid fa-dice mr-1"></i>Roll 1d${cls.hitDie}
+              </button>
+              <button onclick="document.getElementById('lvlUpRollInput').value=${avgDie}" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">
+                Avg (${avgDie})
+              </button>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-800 font-bold text-slate-300">Cancel</button>
+            <button onclick="confirmLevelUp(${nextLvl}, ${conMod}, ${durBonus})" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 font-bold text-slate-950">Confirm Level Up</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function rollLevelUpDie(sides) {
+      const r = Math.floor(Math.random() * sides) + 1;
+      document.getElementById('lvlUpRollInput').value = r;
+    }
+
+    function confirmLevelUp(nextLvl, conMod, durBonus) {
+      const c = getActiveChar();
+      const roll = Math.max(1, parseInt(document.getElementById('lvlUpRollInput').value) || 1);
+      const hpGain = Math.max(1, roll + conMod + durBonus);
+      c.level = nextLvl;
+      c.hp.max += hpGain;
+      c.hp.current += hpGain;
+      c.classResourceCurrent = CLASSES[c.classId].getMetrics(c.level).resourceMax;
+      if (c.xp < XP_THRESHOLDS[nextLvl - 1]) {
+        c.xp = XP_THRESHOLDS[nextLvl - 1];
+      }
+      saveState();
+      closeModal();
+      renderAll();
+      showToast(`Leveled up to Level ${nextLvl}! Max HP increased by +${hpGain}.`, 'success');
+    }
+
+    // 8e. Add / Edit Move Modal
+    function openMoveModal(editId = null) {
+      const c = getActiveChar();
+      const m = editId ? c.quirk.moves.find(x => x.id === editId) : null;
+      openModal(`
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <h3 class="hud-title text-lg font-bold uppercase text-amber-400">${m ? 'Edit Move' : 'Add Quirk Move / Ability'}</h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Move Name</label>
+            <input id="mvName" type="text" value="${m ? escapeHTML(m.name) : ''}" placeholder="e.g., Howitzer Impact"
+              class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-white" />
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Action Type</label>
+              <select id="mvAction" class="w-full bg-agency-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-bold text-cyan-300">
+                ${['Action', 'Bonus Action', 'Reaction', 'Full Turn', 'Free Action', 'Passive'].map(opt =>
+                  `<option value="${opt}" ${m && m.actionType === opt ? 'selected' : ''}>${opt}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Cost / Range</label>
+              <input id="mvCost" type="text" value="${m ? escapeHTML(m.costRange) : ''}" placeholder="e.g., 5 Heat | 60 ft"
+                class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-rose-300" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Damage &amp; Effect Description</label>
+            <textarea id="mvEffect" rows="4" placeholder="Damage dice, saving throw, conditions, or utility..."
+              class="w-full bg-agency-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200">${m ? escapeHTML(m.effect) : ''}</textarea>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-800 text-xs font-bold text-slate-300">Cancel</button>
+            <button onclick="saveMove('${editId || ''}')" class="px-4 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-xs font-bold text-slate-950">Save Move</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function saveMove(editId) {
+      const c = getActiveChar();
+      const name = document.getElementById('mvName').value.trim();
+      if (!name) {
+        showToast('Please enter a move name.', 'error');
+        return;
+      }
+      const payload = {
+        id: editId || ('mv_' + Date.now()),
+        name,
+        actionType: document.getElementById('mvAction').value,
+        costRange: document.getElementById('mvCost').value.trim(),
+        effect: document.getElementById('mvEffect').value.trim(),
+        isUltimate: false
+      };
+
+      if (editId) {
+        const idx = c.quirk.moves.findIndex(x => x.id === editId);
+        if (idx >= 0) {
+          payload.isUltimate = c.quirk.moves[idx].isUltimate;
+          c.quirk.moves[idx] = payload;
+        }
+      } else {
+        c.quirk.moves.push(payload);
+      }
+      saveState();
+      closeModal();
+      renderAll();
+    }
+
+    // 8f. Export & Import JSON
+    function exportRosterJSON() {
+      const dataStr = JSON.stringify({ characters: state.characters, activeId: state.activeId }, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mha5e_roster_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Roster JSON backup downloaded!', 'success');
+    }
+
+    function openImportModal() {
+      openModal(`
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <h3 class="hud-title text-lg font-bold uppercase text-cyan-400"><i class="fa-solid fa-upload mr-1.5"></i>Import Roster JSON</h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="space-y-3">
+          <input id="importFile" type="file" accept=".json" onchange="handleImportFile(this)"
+            class="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-cyan-300 file:font-bold hover:file:bg-slate-700" />
+          <textarea id="importText" rows="5" placeholder="Or paste exported JSON here..."
+            class="w-full bg-agency-900 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-200"></textarea>
+          <div class="flex justify-end gap-2">
+            <button onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-800 text-xs font-bold text-slate-300">Cancel</button>
+            <button onclick="confirmImportJSON()" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-xs font-bold text-slate-950">Import &amp; Replace</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function handleImportFile(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => { document.getElementById('importText').value = e.target.result; };
+      reader.readAsText(file);
+    }
+
+    function confirmImportJSON() {
+      try {
+        const parsed = JSON.parse(document.getElementById('importText').value);
+        if (!Array.isArray(parsed.characters) || parsed.characters.length === 0) {
+          throw new Error('Invalid format');
+        }
+        state.characters = parsed.characters;
+        state.activeId = parsed.activeId || parsed.characters[0].id;
+        saveState();
+        closeModal();
+        renderAll();
+        showToast(`Imported ${state.characters.length} hero(es) successfully!`, 'success');
+      } catch (e) {
+        showToast('Invalid JSON format. Please check your backup file.', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 9. HELPERS & BOOTSTRAP
+    // =========================================================================
+    function escapeHTML(str) {
+      return String(str ?? '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      const colors = type === 'success'
+        ? 'bg-emerald-950/95 border-emerald-400 text-emerald-200'
+        : type === 'error'
+        ? 'bg-rose-950/95 border-rose-500 text-rose-200'
+        : 'bg-agency-900/95 border-cyan-400 text-cyan-200';
+      el.className = `pointer-events-auto px-4 py-2.5 rounded-xl border text-xs font-bold shadow-xl transition-all duration-300 ${colors}`;
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+      }, 3000);
+    }
+
+    // Close modal when clicking outside dialog box
+    document.getElementById('modalBackdrop').addEventListener('click', (e) => {
+      if (e.target.id === 'modalBackdrop') closeModal();
+    });
+
+    // Initialize App
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      bindStaticInputs();
+      switchTab('combat');
+      renderAll();
+    });
+  </script>
+</body>
+</html>
